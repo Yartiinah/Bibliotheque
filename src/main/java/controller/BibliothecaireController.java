@@ -9,6 +9,8 @@ import jakarta.servlet.http.HttpSession;
 import service.BibliothecaireService;
 import service.MembreService;
 
+import java.util.Map;
+
 @Controller
 @RequestMapping("/bibliothecaire")
 public class BibliothecaireController {
@@ -19,120 +21,195 @@ public class BibliothecaireController {
     @Autowired
     private BibliothecaireService bibliothecaireService;
 
-    private boolean isBibliothecaire(HttpSession session) {
+    // Vérifie si l'utilisateur est un bibliothécaire
+    private boolean isBibliothecaire(HttpSession session, RedirectAttributes redirectAttributes) {
         String role = (String) session.getAttribute("role");
-        return "BIBLIOTHECAIRE".equals(role);
+        if (role == null || !role.equals("BIBLIOTHECAIRE")) {
+            redirectAttributes.addFlashAttribute("erreur", "Accès non autorisé.");
+            return false;
+        }
+        return true;
     }
 
+    // Affiche la gestion des adhésions (gestionAdherent.jsp)
     @GetMapping("/gestion-adherent")
-    public String gestionAdherent(HttpSession session, Model model) {
-        if (!isBibliothecaire(session)) {
+    public String gestionAdherent(HttpSession session, Model model, RedirectAttributes redirectAttributes) {
+        if (!isBibliothecaire(session, redirectAttributes)) {
             return "redirect:/login";
         }
         model.addAttribute("inscriptions", membreService.getInscriptionsEnAttente());
-        return "gestionAdherent";
+        return "gestionAdherent"; // Compatible avec gestionAdherent.jsp
     }
 
+    // Accepte une inscription
     @PostMapping("/accepter-inscription")
-    public String accepterInscription(@RequestParam int id, @RequestParam double montantCotisation,
-                                     HttpSession session, RedirectAttributes redirectAttributes) {
-        if (!isBibliothecaire(session)) {
+    public String accepterInscription(
+            @RequestParam int id,
+            @RequestParam double montantCotisation,
+            HttpSession session,
+            RedirectAttributes redirectAttributes) {
+        if (!isBibliothecaire(session, redirectAttributes)) {
             return "redirect:/login";
         }
-        boolean success = membreService.accepterInscription(id, montantCotisation);
-        redirectAttributes.addFlashAttribute("message", success ? "Inscription acceptée." : "Erreur lors de l'acceptation.");
+        try {
+            membreService.validerInscription(id, montantCotisation);
+            redirectAttributes.addFlashAttribute("message", "Inscription validée avec succès.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("erreur", "Erreur lors de la validation de l'inscription.");
+        }
         return "redirect:/bibliothecaire/gestion-adherent";
     }
 
+    // Refuse une inscription
     @PostMapping("/refuser-inscription")
-    public String refuserInscription(@RequestParam int id, HttpSession session, RedirectAttributes redirectAttributes) {
-        if (!isBibliothecaire(session)) {
+    public String refuserInscription(
+            @RequestParam int id,
+            HttpSession session,
+            RedirectAttributes redirectAttributes) {
+        if (!isBibliothecaire(session, redirectAttributes)) {
             return "redirect:/login";
         }
-        boolean success = membreService.refuserInscription(id);
-        redirectAttributes.addFlashAttribute("message", success ? "Inscription refusée." : "Erreur lors du refus.");
+        try {
+            membreService.refuserInscription(id);
+            redirectAttributes.addFlashAttribute("message", "Inscription refusée avec succès.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("erreur", "Erreur lors du refus de l'inscription.");
+        }
         return "redirect:/bibliothecaire/gestion-adherent";
     }
 
+    // Affiche la gestion des catégories (gestionCategorie.jsp)
     @GetMapping("/gestion-categorie")
-    public String gestionCategorie(HttpSession session, Model model) {
-        if (!isBibliothecaire(session)) {
+    public String gestionCategorie(HttpSession session, Model model, RedirectAttributes redirectAttributes) {
+        if (!isBibliothecaire(session, redirectAttributes)) {
             return "redirect:/login";
         }
         model.addAttribute("categories", bibliothecaireService.getAllCategories());
-        return "gestionCategorie";
+        return "gestionCategorie"; // Compatible avec gestionCategorie.jsp
     }
 
+    // Ajoute une catégorie
     @PostMapping("/ajout-categorie")
-    public String ajouterCategorie(@RequestParam String nom, HttpSession session, RedirectAttributes redirectAttributes) {
-        if (!isBibliothecaire(session)) {
+    public String ajoutCategorie(
+            @RequestParam String nom,
+            HttpSession session,
+            RedirectAttributes redirectAttributes) {
+        if (!isBibliothecaire(session, redirectAttributes)) {
             return "redirect:/login";
         }
-        boolean success = bibliothecaireService.createCategorie(nom);
-        redirectAttributes.addFlashAttribute("message", success ? "Catégorie ajoutée." : "Erreur lors de l'ajout.");
+        try {
+            bibliothecaireService.ajouterCategorie(nom);
+            redirectAttributes.addFlashAttribute("message", "Catégorie ajoutée avec succès.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("erreur", "Erreur lors de l'ajout de la catégorie.");
+        }
         return "redirect:/bibliothecaire/gestion-categorie";
     }
 
+    // Modifie une catégorie
     @PostMapping("/modifier-categorie")
-    public String modifierCategorie(@RequestParam int id, @RequestParam String nom,
-                                   HttpSession session, RedirectAttributes redirectAttributes) {
-        if (!isBibliothecaire(session)) {
+    public String modifierCategorie(
+            @RequestParam int id,
+            @RequestParam String nom,
+            HttpSession session,
+            RedirectAttributes redirectAttributes) {
+        if (!isBibliothecaire(session, redirectAttributes)) {
             return "redirect:/login";
         }
-        boolean success = bibliothecaireService.updateCategorie(id, nom);
-        redirectAttributes.addFlashAttribute("message", success ? "Catégorie modifiée." : "Erreur lors de la modification.");
+        try {
+            bibliothecaireService.modifierCategorie(id, nom);
+            redirectAttributes.addFlashAttribute("message", "Catégorie modifiée avec succès.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("erreur", "Erreur lors de la modification de la catégorie.");
+        }
         return "redirect:/bibliothecaire/gestion-categorie";
     }
 
+    // Supprime une catégorie
     @PostMapping("/supprimer-categorie")
-    public String supprimerCategorie(@RequestParam int id, HttpSession session, RedirectAttributes redirectAttributes) {
-        if (!isBibliothecaire(session)) {
+    public String supprimerCategorie(
+            @RequestParam int id,
+            HttpSession session,
+            RedirectAttributes redirectAttributes) {
+        if (!isBibliothecaire(session, redirectAttributes)) {
             return "redirect:/login";
         }
-        boolean success = bibliothecaireService.deleteCategorie(id);
-        redirectAttributes.addFlashAttribute("message", success ? "Catégorie supprimée." : "Erreur lors de la suppression.");
+        try {
+            bibliothecaireService.supprimerCategorie(id);
+            redirectAttributes.addFlashAttribute("message", "Catégorie supprimée avec succès.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("erreur", "Erreur lors de la suppression de la catégorie.");
+        }
         return "redirect:/bibliothecaire/gestion-categorie";
     }
 
+    // Affiche la gestion des livres (gestionLivre.jsp)
     @GetMapping("/gestion-livre")
-    public String gestionLivre(HttpSession session, Model model) {
-        if (!isBibliothecaire(session)) {
+    public String gestionLivre(HttpSession session, Model model, RedirectAttributes redirectAttributes) {
+        if (!isBibliothecaire(session, redirectAttributes)) {
             return "redirect:/login";
         }
         model.addAttribute("livres", bibliothecaireService.getAllLivres());
         model.addAttribute("categories", bibliothecaireService.getAllCategories());
-        return "gestionLivre";
+        return "gestionLivre"; // Compatible avec gestionLivre.jsp
     }
 
+    // Ajoute un livre
     @PostMapping("/ajout-livre")
-    public String ajouterLivre(@RequestParam String titre, @RequestParam String auteur, @RequestParam int categorieId,
-                              HttpSession session, RedirectAttributes redirectAttributes) {
-        if (!isBibliothecaire(session)) {
+    public String ajoutLivre(
+            @RequestParam String titre,
+            @RequestParam String auteur,
+            @RequestParam int categorieId,
+            HttpSession session,
+            RedirectAttributes redirectAttributes) {
+        if (!isBibliothecaire(session, redirectAttributes)) {
             return "redirect:/login";
         }
-        boolean success = bibliothecaireService.createLivre(titre, auteur, categorieId);
-        redirectAttributes.addFlashAttribute("message", success ? "Livre ajouté." : "Erreur lors de l'ajout.");
+        try {
+            bibliothecaireService.ajouterLivre(titre, auteur, categorieId);
+            redirectAttributes.addFlashAttribute("message", "Livre ajouté avec succès.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("erreur", "Erreur lors de l'ajout du livre.");
+        }
         return "redirect:/bibliothecaire/gestion-livre";
     }
 
+    // Modifie un livre
     @PostMapping("/modifier-livre")
-    public String modifierLivre(@RequestParam int id, @RequestParam String titre, @RequestParam String auteur,
-                                @RequestParam int categorieId, HttpSession session, RedirectAttributes redirectAttributes) {
-        if (!isBibliothecaire(session)) {
+    public String modifierLivre(
+            @RequestParam int id,
+            @RequestParam String titre,
+            @RequestParam String auteur,
+            @RequestParam int categorieId,
+            HttpSession session,
+            RedirectAttributes redirectAttributes) {
+        if (!isBibliothecaire(session, redirectAttributes)) {
             return "redirect:/login";
         }
-        boolean success = bibliothecaireService.updateLivre(id, titre, auteur, categorieId);
-        redirectAttributes.addFlashAttribute("message", success ? "Livre modifié." : "Erreur lors de la modification.");
+        try {
+            bibliothecaireService.modifierLivre(id, titre, auteur, categorieId);
+            redirectAttributes.addFlashAttribute("message", "Livre modifié avec succès.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("erreur", "Erreur lors de la modification du livre.");
+        }
         return "redirect:/bibliothecaire/gestion-livre";
     }
 
+    // Supprime un livre
     @PostMapping("/supprimer-livre")
-    public String supprimerLivre(@RequestParam int id, HttpSession session, RedirectAttributes redirectAttributes) {
-        if (!isBibliothecaire(session)) {
+    public String supprimerLivre(
+            @RequestParam int id,
+            HttpSession session,
+            RedirectAttributes redirectAttributes) {
+        if (!isBibliothecaire(session, redirectAttributes)) {
             return "redirect:/login";
         }
-        boolean success = bibliothecaireService.deleteLivre(id);
-        redirectAttributes.addFlashAttribute("message", success ? "Livre supprimé." : "Erreur lors de la suppression.");
+        try {
+            bibliothecaireService.supprimerLivre(id);
+            redirectAttributes.addFlashAttribute("message", "Livre supprimé avec succès.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("erreur", "Erreur lors de la suppression du livre.");
+        }
         return "redirect:/bibliothecaire/gestion-livre";
     }
 }

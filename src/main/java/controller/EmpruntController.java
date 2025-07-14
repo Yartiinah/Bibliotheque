@@ -15,20 +15,27 @@ public class EmpruntController {
     @Autowired
     private EmpruntService empruntService;
 
-    private boolean isBibliothecaire(HttpSession session) {
+    // Vérifie si l'utilisateur est un bibliothécaire
+    private boolean isBibliothecaire(HttpSession session, RedirectAttributes redirectAttributes) {
         String role = (String) session.getAttribute("role");
-        return "BIBLIOTHECAIRE".equals(role);
+        if (role == null || !role.equals("BIBLIOTHECAIRE")) {
+            redirectAttributes.addFlashAttribute("erreur", "Accès non autorisé.");
+            return false;
+        }
+        return true;
     }
 
+    // Affiche le formulaire d'emprunt (empruntForm.jsp)
     @GetMapping("/form")
-    public String afficherFormulaireEmprunt(HttpSession session, Model model) {
-        if (!isBibliothecaire(session)) {
+    public String empruntForm(HttpSession session, Model model, RedirectAttributes redirectAttributes) {
+        if (!isBibliothecaire(session, redirectAttributes)) {
             return "redirect:/login";
         }
         model.addAttribute("exemplaires", empruntService.getExemplairesDisponibles());
-        return "empruntForm";
+        return "empruntForm"; // Compatible avec empruntForm.jsp
     }
 
+    // Effectue un emprunt
     @PostMapping("/effectuer")
     public String effectuerEmprunt(
             @RequestParam int membreId,
@@ -36,20 +43,15 @@ public class EmpruntController {
             @RequestParam String typePret,
             HttpSession session,
             RedirectAttributes redirectAttributes) {
-        if (!isBibliothecaire(session)) {
+        if (!isBibliothecaire(session, redirectAttributes)) {
             return "redirect:/login";
         }
-        Map<String, Object> membreInfo = empruntService.getMembreInfo(membreId);
-        if (membreInfo == null) {
-            redirectAttributes.addFlashAttribute("erreur", "Membre non trouvé ou non valide.");
-            return "redirect:/emprunt/form";
+        try {
+            boolean success = empruntService.effectuerEmprunt(membreId, exemplaireId, typePret);
+            redirectAttributes.addFlashAttribute("message", success ? "Emprunt effectué avec succès." : "Erreur lors de l'emprunt.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("erreur", "Erreur : membre ou exemplaire invalide.");
         }
-        if (empruntService.aPenaliteEnCours(membreId)) {
-            redirectAttributes.addFlashAttribute("erreur", "Le membre a une pénalité en cours.");
-            return "redirect:/emprunt/form";
-        }
-        boolean success = empruntService.effectuerEmprunt(membreId, exemplaireId, typePret);
-        redirectAttributes.addFlashAttribute("message", success ? "Emprunt effectué avec succès." : "Erreur lors de l'emprunt.");
         return "redirect:/emprunt/form";
     }
 }

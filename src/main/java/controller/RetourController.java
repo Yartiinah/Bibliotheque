@@ -15,27 +15,41 @@ public class RetourController {
     @Autowired
     private RetourService retourService;
 
-    private boolean isBibliothecaire(HttpSession session) {
+    // Vérifie si l'utilisateur est un bibliothécaire
+    private boolean isBibliothecaire(HttpSession session, RedirectAttributes redirectAttributes) {
         String role = (String) session.getAttribute("role");
-        return "BIBLIOTHECAIRE".equals(role);
+        if (role == null || !role.equals("BIBLIOTHECAIRE")) {
+            redirectAttributes.addFlashAttribute("erreur", "Accès non autorisé.");
+            return false;
+        }
+        return true;
     }
 
+    // Affiche le formulaire de retour (retourForm.jsp)
     @GetMapping("/form")
-    public String afficherFormulaireRetour(HttpSession session, Model model) {
-        if (!isBibliothecaire(session)) {
+    public String retourForm(HttpSession session, Model model, RedirectAttributes redirectAttributes) {
+        if (!isBibliothecaire(session, redirectAttributes)) {
             return "redirect:/login";
         }
         model.addAttribute("prets", retourService.getPretsEnCours());
-        return "retourForm";
+        return "retourForm"; // Compatible avec retourForm.jsp
     }
 
+    // Enregistre un retour
     @PostMapping("/enregistrer")
-    public String enregistrerRetour(@RequestParam int pretId, HttpSession session, RedirectAttributes redirectAttributes) {
-        if (!isBibliothecaire(session)) {
+    public String enregistrerRetour(
+            @RequestParam int pretId,
+            HttpSession session,
+            RedirectAttributes redirectAttributes) {
+        if (!isBibliothecaire(session, redirectAttributes)) {
             return "redirect:/login";
         }
-        boolean success = retourService.enregistrerRetour(pretId);
-        redirectAttributes.addFlashAttribute("message", success ? "Retour enregistré." : "Erreur lors du retour.");
+        try {
+            retourService.enregistrerRetour(pretId);
+            redirectAttributes.addFlashAttribute("message", "Retour enregistré avec succès.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("erreur", "Erreur lors de l'enregistrement du retour.");
+        }
         return "redirect:/retour/form";
     }
 }
