@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<project name="PostgreSQL" database="PostgreSQL" id="16edcc78-7b72-4b9c-82f7-4c31e827ade5" >
+	<schema name="public" catalogname="biblio" >
+		<comment><![CDATA[standard public schema]]></comment>
+		<table name="adherent" row_count="0" spec="" >
+			<column name="id" type="serial" length="32" jt="4" mandatory="y" />
+			<column name="nom" type="varchar" length="100" jt="12" mandatory="y" />
+			<column name="prenom" type="varchar" length="100" jt="12" mandatory="y" />
+			<column name="email" type="varchar" length="150" jt="12" mandatory="y" />
+			<column name="id_type_abonnement" type="integer" length="32" jt="4" mandatory="y" />
+			<column name="adresse" type="varchar" length="255" jt="12" mandatory="y" />
+			<column name="etat" type="varchar" length="20" jt="12" mandatory="y" />
+			<column name="date_naissance" type="timestamp" jt="93" />
+			<index name="adherent_pkey" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="adherent_email_key" unique="UNIQUE_KEY" >
+				<column name="email" />
+			</index>
+			<constraint name="adherent_etat_check" type="CHECK" options="" >
+				<string><![CDATA[etat)::text = ANY ((ARRAY['actif'::character varying, 'bloque'::character varying])::text[]]]></string>
+			</constraint>
+			<fk name="adherent_id_type_abonnement_fkey" to_schema="biblio.public" to_table="type_abonnement" options="" >
+				<fk_column name="id_type_abonnement" pk="id" />
+			</fk>
+		</table>
+		<table name="categorie" row_count="0" spec="" >
+			<column name="id" type="serial" length="32" jt="4" mandatory="y" />
+			<column name="nom" type="varchar" length="100" jt="12" mandatory="y" />
+			<index name="categorie_pkey" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="categorie_nom_key" unique="UNIQUE_KEY" >
+				<column name="nom" />
+			</index>
+		</table>
+		<table name="exemplaire" row_count="0" spec="" >
+			<column name="id" type="serial" length="32" jt="4" mandatory="y" />
+			<column name="reference" type="varchar" length="30" jt="12" mandatory="y" />
+			<column name="id_livre" type="integer" length="32" jt="4" mandatory="y" />
+			<column name="statut" type="varchar" length="20" jt="12" mandatory="y" />
+			<index name="exemplaire_pkey" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="exemplaire_reference_key" unique="UNIQUE_KEY" >
+				<column name="reference" />
+			</index>
+			<constraint name="exemplaire_statut_check" type="CHECK" options="" >
+				<string><![CDATA[statut)::text = ANY ((ARRAY['disponible'::character varying, 'emprunte'::character varying, 'reserve'::character varying])::text[]]]></string>
+			</constraint>
+			<fk name="exemplaire_id_livre_fkey" to_schema="biblio.public" to_table="livre" options="" >
+				<fk_column name="id_livre" pk="id" />
+			</fk>
+		</table>
+		<table name="historique_pret" row_count="0" spec="" >
+			<column name="id" type="serial" length="32" jt="4" mandatory="y" />
+			<column name="id_pret" type="integer" length="32" jt="4" mandatory="y" />
+			<column name="action" type="varchar" length="30" jt="12" mandatory="y" />
+			<column name="date_action" type="timestamp" jt="93" mandatory="y" >
+				<defo><![CDATA[CURRENT_TIMESTAMP]]></defo>
+			</column>
+			<column name="commentaire" type="text" jt="12" />
+			<index name="historique_pret_pkey" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<fk name="historique_pret_id_pret_fkey" to_schema="biblio.public" to_table="pret" options="" >
+				<fk_column name="id_pret" pk="id" />
+			</fk>
+		</table>
+		<table name="inscription" row_count="0" spec="" >
+			<column name="id" type="serial" length="32" jt="4" mandatory="y" />
+			<column name="id_adherent" type="integer" length="32" jt="4" mandatory="y" />
+			<column name="date_inscription" type="timestamp" jt="93" mandatory="y" />
+			<column name="date_expiration" type="timestamp" jt="93" mandatory="y" />
+			<column name="statut" type="varchar" length="20" jt="12" mandatory="y" />
+			<index name="inscription_pkey" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<constraint name="inscription_statut_check" type="CHECK" options="" >
+				<string><![CDATA[statut)::text = ANY ((ARRAY['valide'::character varying, 'expiree'::character varying])::text[]]]></string>
+			</constraint>
+			<fk name="inscription_id_adherent_fkey" to_schema="biblio.public" to_table="adherent" options="" >
+				<fk_column name="id_adherent" pk="id" />
+			</fk>
+		</table>
+		<table name="jourferie" row_count="0" spec="" >
+			<column name="id" type="serial" length="32" jt="4" mandatory="y" />
+			<column name="date_ferie" type="timestamp" jt="93" mandatory="y" />
+			<column name="description" type="varchar" length="100" jt="12" />
+			<index name="jourferie_pkey" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="jourferie_date_ferie_key" unique="UNIQUE_KEY" >
+				<column name="date_ferie" />
+			</index>
+		</table>
+		<table name="livre" row_count="0" spec="" >
+			<column name="id" type="serial" length="32" jt="4" mandatory="y" />
+			<column name="titre" type="varchar" length="200" jt="12" mandatory="y" />
+			<column name="auteur" type="varchar" length="150" jt="12" mandatory="y" />
+			<column name="id_categorie" type="integer" length="32" jt="4" />
+			<column name="isbn" type="varchar" length="20" jt="12" />
+			<column name="restriction" type="varchar" length="20" jt="12" />
+			<index name="livre_pkey" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="livre_isbn_key" unique="UNIQUE_KEY" >
+				<column name="isbn" />
+			</index>
+			<constraint name="livre_restriction_check" type="CHECK" options="" >
+				<string><![CDATA[restriction)::text = ANY ((ARRAY['aucun'::character varying, 'adulte'::character varying])::text[]]]></string>
+			</constraint>
+			<fk name="livre_id_categorie_fkey" to_schema="biblio.public" to_table="categorie" options="" >
+				<fk_column name="id_categorie" pk="id" />
+			</fk>
+		</table>
+		<table name="penalite" row_count="0" spec="" >
+			<column name="id" type="serial" length="32" jt="4" mandatory="y" />
+			<column name="id_adherent" type="integer" length="32" jt="4" mandatory="y" />
+			<column name="id_pret" type="integer" length="32" jt="4" mandatory="y" />
+			<column name="date_debut" type="timestamp" jt="93" mandatory="y" />
+			<column name="date_fin" type="timestamp" jt="93" mandatory="y" />
+			<column name="reglee" type="boolean" jt="16" mandatory="y" >
+				<defo><![CDATA[false]]></defo>
+			</column>
+			<index name="penalite_pkey" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<fk name="penalite_id_pret_fkey" to_schema="biblio.public" to_table="pret" options="" >
+				<fk_column name="id_pret" pk="id" />
+			</fk>
+			<fk name="penalite_id_adherent_fkey" to_schema="biblio.public" to_table="adherent" options="" >
+				<fk_column name="id_adherent" pk="id" />
+			</fk>
+		</table>
+		<table name="pret" row_count="0" spec="" >
+			<column name="id" type="serial" length="32" jt="4" mandatory="y" />
+			<column name="id_exemplaire" type="integer" length="32" jt="4" mandatory="y" />
+			<column name="id_adherent" type="integer" length="32" jt="4" mandatory="y" />
+			<column name="date_emprunt" type="timestamp" jt="93" mandatory="y" />
+			<column name="date_retour_prevue" type="timestamp" jt="93" mandatory="y" />
+			<column name="date_retour_effective" type="timestamp" jt="93" />
+			<column name="type_pret" type="varchar" length="20" jt="12" mandatory="y" />
+			<column name="statut" type="varchar" length="20" jt="12" mandatory="y" />
+			<column name="nbprolongements" type="integer" length="32" jt="4" >
+				<defo><![CDATA[0]]></defo>
+			</column>
+			<index name="pret_pkey" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<constraint name="pret_type_pret_check" type="CHECK" options="" >
+				<string><![CDATA[type_pret)::text = ANY ((ARRAY['sur_place'::character varying, 'emporte'::character varying])::text[]]]></string>
+			</constraint>
+			<constraint name="pret_statut_check" type="CHECK" options="" >
+				<string><![CDATA[statut)::text = ANY ((ARRAY['en_cours'::character varying, 'termine'::character varying, 'en_retard'::character varying])::text[]]]></string>
+			</constraint>
+			<fk name="pret_id_adherent_fkey" to_schema="biblio.public" to_table="adherent" options="" >
+				<fk_column name="id_adherent" pk="id" />
+			</fk>
+			<fk name="pret_id_exemplaire_fkey" to_schema="biblio.public" to_table="exemplaire" options="" >
+				<fk_column name="id_exemplaire" pk="id" />
+			</fk>
+		</table>
+		<table name="reservation" row_count="0" spec="" >
+			<column name="id" type="serial" length="32" jt="4" mandatory="y" />
+			<column name="id_adherent" type="integer" length="32" jt="4" mandatory="y" />
+			<column name="id_exemplaire" type="integer" length="32" jt="4" mandatory="y" />
+			<column name="date_demande" type="timestamp" jt="93" mandatory="y" />
+			<column name="statut" type="varchar" length="20" jt="12" mandatory="y" />
+			<index name="reservation_pkey" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<constraint name="reservation_statut_check" type="CHECK" options="" >
+				<string><![CDATA[statut)::text = ANY ((ARRAY['en_attente'::character varying, 'acceptee'::character varying, 'refusee'::character varying])::text[]]]></string>
+			</constraint>
+			<fk name="reservation_id_exemplaire_fkey" to_schema="biblio.public" to_table="exemplaire" options="" >
+				<fk_column name="id_exemplaire" pk="id" />
+			</fk>
+			<fk name="reservation_id_adherent_fkey" to_schema="biblio.public" to_table="adherent" options="" >
+				<fk_column name="id_adherent" pk="id" />
+			</fk>
+		</table>
+		<table name="type_abonnement" row_count="0" spec="" >
+			<column name="id" type="serial" length="32" jt="4" mandatory="y" />
+			<column name="libelle" type="varchar" length="20" jt="12" mandatory="y" />
+			<column name="tarif" type="numeric" length="6" decimal="2" jt="2" mandatory="y" />
+			<column name="quota_livre" type="integer" length="32" jt="4" mandatory="y" />
+			<column name="duree_pret_jour" type="integer" length="32" jt="4" mandatory="y" >
+				<defo><![CDATA[14]]></defo>
+			</column>
+			<column name="quota_reservation" type="integer" length="32" jt="4" mandatory="y" >
+				<defo><![CDATA[2]]></defo>
+			</column>
+			<column name="quota_prolongement" type="integer" length="32" jt="4" mandatory="y" >
+				<defo><![CDATA[1]]></defo>
+			</column>
+			<column name="nb_jour_prolongement" type="integer" length="32" jt="4" mandatory="y" >
+				<defo><![CDATA[7]]></defo>
+			</column>
+			<index name="type_abonnement_pkey" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="type_abonnement_libelle_key" unique="UNIQUE_KEY" >
+				<column name="libelle" />
+			</index>
+			<constraint name="type_abonnement_libelle_check" type="CHECK" options="" >
+				<string><![CDATA[libelle)::text = ANY ((ARRAY['enfant'::character varying, 'etudiant'::character varying, 'adulte'::character varying, 'senior'::character varying, 'professionnel'::character varying, 'professeur'::character varying])::text[]]]></string>
+			</constraint>
+			<constraint name="type_abonnement_quota_livre_check" type="CHECK" options="" >
+				<string><![CDATA[quota_livre >= 0]]></string>
+			</constraint>
+		</table>
+		<table name="utilisateur" row_count="0" spec="" >
+			<column name="id" type="serial" length="32" jt="4" mandatory="y" />
+			<column name="username" type="varchar" length="100" jt="12" mandatory="y" />
+			<column name="password" type="varchar" length="255" jt="12" mandatory="y" />
+			<column name="role" type="varchar" length="20" jt="12" mandatory="y" />
+			<column name="adherent_id" type="integer" length="32" jt="4" />
+			<index name="utilisateur_pkey" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="utilisateur_username_key" unique="UNIQUE_KEY" >
+				<column name="username" />
+			</index>
+			<constraint name="utilisateur_role_check" type="CHECK" options="" >
+				<string><![CDATA[role)::text = ANY ((ARRAY['ADHERENT'::character varying, 'BIBLIOTHECAIRE'::character varying])::text[]]]></string>
+			</constraint>
+			<fk name="utilisateur_adherent_id_fkey" to_schema="biblio.public" to_table="adherent" options="" >
+				<fk_column name="adherent_id" pk="id" />
+			</fk>
+		</table>
+		<sequence name="adherent_id_seq" options="AS integer START WITH 1 INCREMENT BY 1" />
+		<sequence name="categorie_id_seq" options="AS integer START WITH 1 INCREMENT BY 1" />
+		<sequence name="exemplaire_id_seq" options="AS integer START WITH 1 INCREMENT BY 1" />
+		<sequence name="historique_pret_id_seq" options="AS integer START WITH 1 INCREMENT BY 1" />
+		<sequence name="inscription_id_seq" options="AS integer START WITH 1 INCREMENT BY 1" />
+		<sequence name="jourferie_id_seq" options="AS integer START WITH 1 INCREMENT BY 1" />
+		<sequence name="livre_id_seq" options="AS integer START WITH 1 INCREMENT BY 1" />
+		<sequence name="penalite_id_seq" options="AS integer START WITH 1 INCREMENT BY 1" />
+		<sequence name="pret_id_seq" options="AS integer START WITH 1 INCREMENT BY 1" />
+		<sequence name="reservation_id_seq" options="AS integer START WITH 1 INCREMENT BY 1" />
+		<sequence name="type_abonnement_id_seq" options="AS integer START WITH 1 INCREMENT BY 1" />
+		<sequence name="utilisateur_id_seq" options="AS integer START WITH 1 INCREMENT BY 1" />
+	</schema>
+	<layout name="Main Diagram" id="8ff3cecf-36d3-4aeb-9f59-73279d398915" show_relation="columns" >
+		<entity schema="biblio.public" name="adherent" color="C7F4BE" x="1083" y="418" />
+		<entity schema="biblio.public" name="categorie" color="BED3F4" x="342" y="684" />
+		<entity schema="biblio.public" name="exemplaire" color="BED3F4" x="551" y="437" />
+		<entity schema="biblio.public" name="inscription" color="C7F4BE" x="1387" y="95" />
+		<entity schema="biblio.public" name="jourferie" color="3986C1" x="817" y="95" />
+		<entity schema="biblio.public" name="livre" color="BED3F4" x="798" y="684" />
+		<entity schema="biblio.public" name="penalite" color="BED3F4" x="304" y="399" />
+		<entity schema="biblio.public" name="pret" color="BED3F4" x="57" y="893" />
+		<entity schema="biblio.public" name="reservation" color="BED3F4" x="532" y="950" />
+		<entity schema="biblio.public" name="type_abonnement" color="C7F4BE" x="1083" y="95" />
+		<entity schema="biblio.public" name="utilisateur" color="C7F4BE" x="1387" y="418" />
+		<entity schema="biblio.public" name="historique_pret" color="BED3F4" x="551" y="741" />
+		<group name="type_abonnement" color="EEF7EC" >
+			<entity schema="biblio.public" name="type_abonnement" />
+			<entity schema="biblio.public" name="inscription" />
+			<entity schema="biblio.public" name="adherent" />
+			<entity schema="biblio.public" name="utilisateur" />
+		</group>
+		<group name="categorie" color="ECF0F7" >
+			<entity schema="biblio.public" name="categorie" />
+			<entity schema="biblio.public" name="livre" />
+			<entity schema="biblio.public" name="exemplaire" />
+			<entity schema="biblio.public" name="reservation" />
+			<entity schema="biblio.public" name="pret" />
+			<entity schema="biblio.public" name="penalite" />
+			<entity schema="biblio.public" name="historique_pret" />
+		</group>
+	</layout>
+	<layout name="~Diagram with Sample Tools" id="b8d5eea6-3999-408f-8cb8-a657bfb536bb" show_column_type="y" show_relation="columns" >
+		<entity schema="biblio.public" name="adherent" color="C7F4BE" x="969" y="380" />
+		<entity schema="biblio.public" name="categorie" color="BED3F4" x="76" y="703" />
+		<entity schema="biblio.public" name="exemplaire" color="BED3F4" x="57" y="456" />
+		<entity schema="biblio.public" name="historique_pret" color="BED3F4" x="342" y="703" />
+		<entity schema="biblio.public" name="inscription" color="C7F4BE" x="1311" y="57" />
+		<entity schema="biblio.public" name="jourferie" color="3986C1" x="627" y="57" />
+		<entity schema="biblio.public" name="livre" color="BED3F4" x="646" y="703" />
+		<entity schema="biblio.public" name="penalite" color="BED3F4" x="57" y="969" />
+		<entity schema="biblio.public" name="pret" color="BED3F4" x="342" y="361" />
+		<entity schema="biblio.public" name="reservation" color="BED3F4" x="342" y="969" />
+		<entity schema="biblio.public" name="type_abonnement" color="C7F4BE" x="969" y="57" />
+		<entity schema="biblio.public" name="utilisateur" color="C7F4BE" x="1311" y="380" />
+		<script name="SQL Editor" id="6c0d4320-a249-4d0a-979b-de577d94c509" language="SQL" >
+			<string><![CDATA[SELECT
+	id, nom, prenom, email, id_type_abonnement, adresse, etat, date_naissance
+FROM
+	"public".adherent t;]]></string>
+		</script>
+		<browser id="84a0ff6d-7b92-4581-bc66-3db73bd71404" name="Relational Data Editor" confirm_updates="y" >
+			<browse_table schema="biblio.public" entity="adherent" fk_out="n" x="20" y="20" width="270" height="-60" >
+				<browse_table schema="biblio.public" entity="inscription" fk="inscription_id_adherent_fkey" fk_out="y" x="310" y="20" width="500" height="350" />
+			</browse_table>
+		</browser>
+	</layout>
+</project>
