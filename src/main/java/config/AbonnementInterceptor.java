@@ -3,31 +3,29 @@ package config;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import model.Utilisateur;
-import model.Adherent;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
-import org.springframework.stereotype.Component;
-import service.AdherentService;
+import service.MembreService;
+
+import java.util.Map;
 
 @Component
 public class AbonnementInterceptor implements HandlerInterceptor {
+
     @Autowired
-    private AdherentService adherentService;
+    private MembreService membreService;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         HttpSession session = request.getSession(false);
         if (session != null) {
-            Object userObj = session.getAttribute("user");
-            if (userObj != null && userObj instanceof Utilisateur user) {
-                if ("ADHERENT".equalsIgnoreCase(user.getRole()) && user.getAdherent() != null) {
-                    Adherent adherent = user.getAdherent();
-                    boolean valide = adherentService.isInscriptionValide(adherent);
-                    // On laisse passer la navigation, mais on met l'info dans la session
-                    session.setAttribute("inscriptionValide", valide);
-                }
+            Map<String, Object> membreConnecte = (Map<String, Object>) session.getAttribute("membreConnecte");
+            if (membreConnecte != null) {
+                Integer membreId = (Integer) membreConnecte.get("id");
+                boolean inscriptionValide = membreService.isInscriptionValide(membreId);
+                session.setAttribute("inscriptionValide", inscriptionValide);
             }
         }
         return true;
