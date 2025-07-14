@@ -9,8 +9,6 @@ import jakarta.servlet.http.HttpSession;
 import service.BibliothecaireService;
 import service.MembreService;
 
-import java.util.Map;
-
 @Controller
 @RequestMapping("/bibliothecaire")
 public class BibliothecaireController {
@@ -38,7 +36,7 @@ public class BibliothecaireController {
             return "redirect:/login";
         }
         model.addAttribute("inscriptions", membreService.getInscriptionsEnAttente());
-        return "gestionAdherent"; // Compatible avec gestionAdherent.jsp
+        return "gestionAdherent";
     }
 
     // Accepte une inscription
@@ -85,7 +83,7 @@ public class BibliothecaireController {
             return "redirect:/login";
         }
         model.addAttribute("categories", bibliothecaireService.getAllCategories());
-        return "gestionCategorie"; // Compatible avec gestionCategorie.jsp
+        return "gestionCategorie";
     }
 
     // Ajoute une catégorie
@@ -151,7 +149,7 @@ public class BibliothecaireController {
         }
         model.addAttribute("livres", bibliothecaireService.getAllLivres());
         model.addAttribute("categories", bibliothecaireService.getAllCategories());
-        return "gestionLivre"; // Compatible avec gestionLivre.jsp
+        return "gestionLivre";
     }
 
     // Ajoute un livre

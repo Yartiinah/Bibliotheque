@@ -1,6 +1,7 @@
-package model;
+package com.example.library.model;
 
 import jakarta.persistence.*;
+import java.util.Set;
 
 @Entity
 @Table(name = "livre")
@@ -10,23 +11,30 @@ public class Livre {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(nullable = false)
+    @Column(length = 150)
     private String titre;
 
-    @Column(nullable = false)
+    @Column(length = 100)
     private String auteur;
 
-    @ManyToOne
-    @JoinColumn(name = "id_categorie")
+    @ManyToOne(fetch = FetchType.LAZY) // Plusieurs livres peuvent appartenir à une catégorie
+    @JoinColumn(name = "categorie_id", nullable = false) // Colonne de jointure dans la table livre
     private Categorie categorie;
 
-    @Column(unique = true)
-    private String isbn;
+    @OneToMany(mappedBy = "livre", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Set<Exemplaire> exemplaires;
 
-    @Enumerated(EnumType.STRING)
-    private Restriction restriction;
+    // Constructeurs
+    public Livre() {
+    }
 
-    // Getters and Setters
+    public Livre(String titre, String auteur, Categorie categorie) {
+        this.titre = titre;
+        this.auteur = auteur;
+        this.categorie = categorie;
+    }
+
+    // Getters et Setters
     public Integer getId() {
         return id;
     }
@@ -59,23 +67,20 @@ public class Livre {
         this.categorie = categorie;
     }
 
-    public String getIsbn() {
-        return isbn;
+    public Set<Exemplaire> getExemplaires() {
+        return exemplaires;
     }
 
-    public void setIsbn(String isbn) {
-        this.isbn = isbn;
+    public void setExemplaires(Set<Exemplaire> exemplaires) {
+        this.exemplaires = exemplaires;
     }
 
-    public Restriction getRestriction() {
-        return restriction;
+    @Override
+    public String toString() {
+        return "Livre{" +
+               "id=" + id +
+               ", titre='" + titre + '\'' +
+               ", auteur='" + auteur + '\'' +
+               '}';
     }
-
-    public void setRestriction(Restriction restriction) {
-        this.restriction = restriction;
-    }
-}
-
-enum Restriction {
-    AUCUN, ADULTE
 }

@@ -8,6 +8,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import jakarta.servlet.http.HttpSession;
 import service.ProlongationService;
 
+import java.util.Map;
+
 @Controller
 @RequestMapping("/prolongation")
 public class ProlongationController {

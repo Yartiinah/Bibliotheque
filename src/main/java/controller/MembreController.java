@@ -1,5 +1,6 @@
 package controller;
 
+import model.Membre;
 import model.TypeAbonnement;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -7,12 +8,11 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import jakarta.servlet.http.HttpSession;
-import service.MembreService;
 import service.EmpruntService;
+import service.MembreService;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Map;
 
 @Controller
 @RequestMapping("/membre")
@@ -24,20 +24,17 @@ public class MembreController {
     @Autowired
     private EmpruntService empruntService;
 
-    // Affiche le formulaire d'inscription (inscriptionForm.jsp)
     @GetMapping("/inscription-form-en-ligne")
     public String afficherFormulaireInscription(Model model) {
         model.addAttribute("profils", TypeAbonnement.values());
-        return "inscriptionForm"; // Compatible avec inscriptionForm.jsp
+        return "inscriptionForm";
     }
 
-    // Affiche le formulaire de connexion membre (loginMembre.jsp)
     @GetMapping("/login-form")
     public String afficherFormulaireLogin() {
-        return "loginMembre"; // Compatible avec loginMembre.jsp
+        return "loginMembre";
     }
 
-    // Traite l'inscription en ligne
     @PostMapping("/inscription-en-ligne")
     public String traiterInscription(
             @RequestParam String nom,
@@ -58,14 +55,13 @@ public class MembreController {
         return "redirect:/membre/inscription-form-en-ligne";
     }
 
-    // Traite la connexion membre
     @PostMapping("/login")
     public String loginMembre(
             @RequestParam String email,
             @RequestParam String nom,
             HttpSession session,
             RedirectAttributes redirectAttributes) {
-        Map<String, Object> membre = membreService.loginMembre(email, nom);
+        Membre membre = membreService.loginMembre(email, nom);
         if (membre != null) {
             session.setAttribute("membreConnecte", membre);
             return "redirect:/membre/espace";
@@ -75,20 +71,19 @@ public class MembreController {
         }
     }
 
-    // Affiche l'espace membre (espaceMembre.jsp)
     @GetMapping("/espace")
     public String espaceMembre(HttpSession session, Model model, RedirectAttributes redirectAttributes) {
-        Map<String, Object> membre = (Map<String, Object>) session.getAttribute("membreConnecte");
+        Membre membre = (Membre) session.getAttribute("membreConnecte");
         if (membre == null) {
             redirectAttributes.addFlashAttribute("erreur", "Veuillez vous connecter.");
             return "redirect:/membre/login-form";
         }
         model.addAttribute("membre", membre);
-        model.addAttribute("prets", empruntService.getPretsMembre((Integer) membre.get("id")));
-        return "espaceMembre"; // Compatible avec espaceMembre.jsp
+        model.addAttribute("prets", empruntService.getPretsMembre(membre.getId()));
+        model.addAttribute("inscriptionValide", membreService.isInscriptionValide(membre.getId()));
+        return "espaceMembre";
     }
 
-    // Déconnexion membre
     @GetMapping("/logout")
     public String logout(HttpSession session) {
         session.invalidate();

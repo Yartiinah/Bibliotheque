@@ -9,8 +9,6 @@ import jakarta.servlet.http.HttpSession;
 import service.EmpruntService;
 import service.ReservationService;
 
-import java.util.Map;
-
 @Controller
 @RequestMapping("/reservation")
 public class ReservationController {
@@ -34,13 +32,13 @@ public class ReservationController {
     // Affiche le formulaire de réservation (reservationForm.jsp)
     @GetMapping("/form")
     public String reservationForm(HttpSession session, Model model, RedirectAttributes redirectAttributes) {
-        Map<String, Object> membre = (Map<String, Object>) session.getAttribute("membreConnecte");
+        Membre membre = (Membre) session.getAttribute("membreConnecte");
         if (membre == null) {
             redirectAttributes.addFlashAttribute("erreur", "Veuillez vous connecter.");
             return "redirect:/membre/login-form";
         }
         model.addAttribute("exemplaires", empruntService.getExemplairesDisponibles());
-        return "reservationForm"; // Compatible avec reservationForm.jsp
+        return "reservationForm";
     }
 
     // Effectue une réservation
@@ -49,13 +47,13 @@ public class ReservationController {
             @RequestParam int exemplaireId,
             HttpSession session,
             RedirectAttributes redirectAttributes) {
-        Map<String, Object> membre = (Map<String, Object>) session.getAttribute("membreConnecte");
+        Membre membre = (Membre) session.getAttribute("membreConnecte");
         if (membre == null) {
             redirectAttributes.addFlashAttribute("erreur", "Veuillez vous connecter.");
             return "redirect:/membre/login-form";
         }
         try {
-            boolean success = reservationService.reserver((Integer) membre.get("id"), exemplaireId);
+            boolean success = reservationService.reserver(membre.getId(), exemplaireId);
             redirectAttributes.addFlashAttribute("message", success ? "Réservation effectuée avec succès." : "Erreur lors de la réservation.");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("erreur", "Erreur : exemplaire non disponible.");
@@ -70,7 +68,7 @@ public class ReservationController {
             return "redirect:/login";
         }
         model.addAttribute("reservations", reservationService.getReservationsEnAttente());
-        return "gestionReservations"; // Compatible avec gestionReservations.jsp
+        return "gestionReservations";
     }
 
     // Accepte une réservation

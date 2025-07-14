@@ -1,190 +1,201 @@
--- Création de la base
-\c postgres
-DROP DATABASE IF EXISTS biblio;
-CREATE DATABASE biblio;
-\c biblio;
+-- ================================
+-- 📁 CATEGORIES ET LIVRES (PostgreSQL)
+-- ================================
 
--- Table des types d'abonnement
-CREATE TABLE type_abonnement (
-    id SERIAL PRIMARY KEY,
-    libelle VARCHAR(20) UNIQUE NOT NULL CHECK (libelle IN ('enfant', 'etudiant', 'adulte', 'senior', 'professionnel', 'professeur')),
-    tarif NUMERIC(6,2) NOT NULL,
-    quota_livre INT NOT NULL CHECK (quota_livre >= 0),
-    duree_pret_jour INT NOT NULL DEFAULT 14, -- durée max du prêt en jours
-    quota_reservation INT NOT NULL DEFAULT 2, -- nombre max de réservations
-    quota_prolongement INT NOT NULL DEFAULT 1, -- nombre max de prolongements
-    nb_jour_prolongement INT NOT NULL DEFAULT 7 -- nombre de jours pour un prolongement
+-- Supprimer les tables si elles existent pour permettre la recréation
+DROP TABLE IF EXISTS reservation CASCADE;
+DROP TABLE IF EXISTS prolongation CASCADE;
+DROP TABLE IF EXISTS pret CASCADE;
+DROP TABLE IF EXISTS penalite CASCADE;
+DROP TABLE IF EXISTS cotisation CASCADE;
+DROP TABLE IF EXISTS adhesion CASCADE;
+DROP TABLE IF EXISTS membre CASCADE;
+DROP TABLE IF EXISTS exemplaire CASCADE;
+DROP TABLE IF EXISTS livre CASCADE;
+DROP TABLE IF EXISTS categorie CASCADE;
+DROP TABLE IF EXISTS "user" CASCADE; -- "user" est un mot-clé réservé en PostgreSQL, donc il est mis entre guillemets
+
+
+-- Supprimer les types personnalisés si ils existent
+DROP TYPE IF EXISTS EXEMPLAIRE_STATUT;
+DROP TYPE IF EXISTS MEMBRE_PROFIL;
+DROP TYPE IF EXISTS MEMBRE_TYPE_INSCRIPTION;
+DROP TYPE IF EXISTS MEMBRE_STATUT_VALIDATION;
+DROP TYPE IF EXISTS PRET_TYPE;
+DROP TYPE IF EXISTS PROLONGATION_STATUT;
+DROP TYPE IF EXISTS RESERVATION_STATUT;
+
+
+-- Création des types ENUM personnalisés pour PostgreSQL
+CREATE TYPE EXEMPLAIRE_STATUT AS ENUM ('DISPONIBLE', 'EMPRUNTE', 'RESERVE');
+CREATE TYPE MEMBRE_PROFIL AS ENUM ('ENFANT', 'ADULTE', 'ETUDIANT');
+CREATE TYPE MEMBRE_TYPE_INSCRIPTION AS ENUM ('EN_LIGNE', 'SUR_PLACE');
+CREATE TYPE MEMBRE_STATUT_VALIDATION AS ENUM ('EN_ATTENTE', 'VALIDE', 'REJETE');
+CREATE TYPE PRET_TYPE AS ENUM ('NORMAL', 'CONSULTATION');
+CREATE TYPE PROLONGATION_STATUT AS ENUM ('EN_ATTENTE', 'ACCEPTEE', 'REFUSEE');
+CREATE TYPE RESERVATION_STATUT AS ENUM ('EN_ATTENTE', 'CONFIRMEE', 'ANNULEE');
+
+
+CREATE TABLE "user" (
+    id BIGSERIAL PRIMARY KEY, -- BIGSERIAL pour les BIGINT auto-incrémentés
+    name VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL
 );
 
-INSERT INTO type_abonnement (libelle, tarif, quota_livre, duree_pret_jour, quota_reservation, quota_prolongement, nb_jour_prolongement) VALUES
-('enfant', 3.00, 2, 7, 1, 1, 7),
-('etudiant', 5.00, 4, 14, 2, 2, 14),
-('professionnel', 8.00, 5, 21, 3, 2, 21),
-('professeur', 10.00, 6, 30, 3, 3, 30),
-('senior', 6.00, 3, 14, 2, 1, 14);
-
--- Table des adhérents
-CREATE TABLE adherent (
-    id SERIAL PRIMARY KEY,
-    nom VARCHAR(100) NOT NULL,
-    prenom VARCHAR(100) NOT NULL,
-    email VARCHAR(150) UNIQUE NOT NULL,
-    id_type_abonnement INT NOT NULL REFERENCES type_abonnement(id),
-    adresse VARCHAR(255) NOT NULL,
-    etat VARCHAR(20) NOT NULL CHECK (etat IN ('actif', 'bloque')),
-    date_naissance TIMESTAMP
-);
-
--- Table des inscriptions
-CREATE TABLE inscription (
-    id SERIAL PRIMARY KEY,
-    id_adherent INT NOT NULL REFERENCES adherent(id),
-    date_inscription TIMESTAMP NOT NULL,
-    date_expiration TIMESTAMP NOT NULL,
-    statut VARCHAR(20) NOT NULL CHECK (statut IN ('valide', 'expiree'))
-);
-
--- Table des catégories de livre
 CREATE TABLE categorie (
-    id SERIAL PRIMARY KEY,
-    nom VARCHAR(100) UNIQUE NOT NULL
+    id SERIAL PRIMARY KEY, -- SERIAL pour les INT auto-incrémentés
+    nom VARCHAR(50), -- Enfant, +18, Tous publics
+    age_minimum INT
 );
 
-INSERT INTO categorie (nom) VALUES
-('Fiction'),
-('Non-fiction'),
-('Science'),
-('Histoire'),
-('Biographie'),
-('Enfants'),
-('Adolescents'),
-('Romance');
-
--- Table des livres
 CREATE TABLE livre (
     id SERIAL PRIMARY KEY,
-    titre VARCHAR(200) NOT NULL,
-    auteur VARCHAR(150) NOT NULL,
-    id_categorie INT REFERENCES categorie(id),
-    isbn VARCHAR(20) UNIQUE,
-    restriction VARCHAR(20) CHECK (restriction IN ('aucun', 'adulte'))
+    titre VARCHAR(150),
+    auteur VARCHAR(100),
+    categorie_id INT,
+    FOREIGN KEY (categorie_id) REFERENCES categorie(id)
 );
 
--- Table des exemplaires
 CREATE TABLE exemplaire (
     id SERIAL PRIMARY KEY,
-    reference VARCHAR(30) UNIQUE NOT NULL,
-    id_livre INT NOT NULL REFERENCES livre(id),
-    statut VARCHAR(20) NOT NULL CHECK (statut IN ('disponible', 'emprunte', 'reserve'))
+    livre_id INT,
+    code_exemplaire VARCHAR(50) UNIQUE,
+    statut EXEMPLAIRE_STATUT DEFAULT 'DISPONIBLE', -- Utilisation du type personnalisé
+    localisation VARCHAR(100),
+    FOREIGN KEY (livre_id) REFERENCES livre(id)
 );
 
--- Table des prêts
--- Table des prêts
-CREATE TABLE pret (
+-- ================================
+-- 👤 MEMBRES ET INSCRIPTIONS (PostgreSQL)
+-- ================================
+
+CREATE TABLE membre (
     id SERIAL PRIMARY KEY,
-    id_exemplaire INT NOT NULL REFERENCES exemplaire(id),
-    id_adherent INT NOT NULL REFERENCES adherent(id),
-    date_emprunt TIMESTAMP NOT NULL,
-    date_retour_prevue TIMESTAMP NOT NULL,
-    date_retour_effective TIMESTAMP,
-    type_pret VARCHAR(20) NOT NULL CHECK (type_pret IN ('sur_place', 'emporte')),
-    statut VARCHAR(20) NOT NULL CHECK (statut IN ('en_cours', 'termine', 'en_retard')),
-    nbprolongements INTEGER DEFAULT 0,
-    id_pret_origine INT REFERENCES pret(id)
+    nom VARCHAR(100),
+    prenom VARCHAR(100),
+    email VARCHAR(100) UNIQUE,
+    adresse TEXT,
+    date_naissance DATE,
+    profil MEMBRE_PROFIL NOT NULL, -- Utilisation du type personnalisé
+    type_inscription MEMBRE_TYPE_INSCRIPTION NOT NULL, -- Utilisation du type personnalisé
+    statut_validation MEMBRE_STATUT_VALIDATION DEFAULT 'EN_ATTENTE' -- Utilisation du type personnalisé
 );
 
-CREATE TABLE historique_pret (
+CREATE TABLE adhesion (
     id SERIAL PRIMARY KEY,
-    id_pret INT NOT NULL REFERENCES pret(id),
-    action VARCHAR(30) NOT NULL, -- ex: 'prolongement', 'retour', 'emprunt'
-    date_action TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    commentaire TEXT
+    membre_id INT,
+    date_debut DATE,
+    date_expiration DATE,
+    FOREIGN KEY (membre_id) REFERENCES membre(id)
 );
 
--- Table des réservations
-CREATE TABLE reservation (
+CREATE TABLE cotisation (
     id SERIAL PRIMARY KEY,
-    id_adherent INT NOT NULL REFERENCES adherent(id),
-    id_exemplaire INT NOT NULL REFERENCES Exemplaire(id),
-    date_demande TIMESTAMP NOT NULL,
-    statut VARCHAR(20) NOT NULL CHECK (statut IN ('en_attente', 'acceptee', 'refusee'))
+    membre_id INT,
+    montant DECIMAL(10, 2),
+    date_paiement DATE,
+    annee INT,
+    FOREIGN KEY (membre_id) REFERENCES membre(id)
 );
 
--- Table des pénalités
-DROP TABLE IF EXISTS penalite;
 CREATE TABLE penalite (
     id SERIAL PRIMARY KEY,
-    id_adherent INT NOT NULL REFERENCES adherent(id),
-    id_pret INT NOT NULL REFERENCES pret(id),
-    date_debut TIMESTAMP NOT NULL,
-    date_fin TIMESTAMP NOT NULL,
-    reglee BOOLEAN NOT NULL DEFAULT FALSE
-);
--- Table des jours fériés
-CREATE TABLE jourferie (
-    id SERIAL PRIMARY KEY,
-    date_ferie TIMESTAMP UNIQUE NOT NULL,
-    description VARCHAR(100)
+    membre_id INT,
+    date_debut_penalite DATE,
+    date_fin_penalite DATE,
+    motif TEXT,
+    FOREIGN KEY (membre_id) REFERENCES membre(id)
 );
 
--- Table des utilisateurs
-CREATE TABLE utilisateur (
+-- ================================
+-- 📚 PRÊTS ET RETOURS (PostgreSQL)
+-- ================================
+
+CREATE TABLE pret (
     id SERIAL PRIMARY KEY,
-    username VARCHAR(100) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    role VARCHAR(20) NOT NULL CHECK (role IN ('ADHERENT', 'BIBLIOTHECAIRE')),
-    adherent_id INT REFERENCES adherent(id)
-);p
+    membre_id INT,
+    exemplaire_id INT,
+    date_emprunt DATE,
+    date_retour_prevue DATE,
+    date_retour_effective DATE DEFAULT NULL,
+    type_pret PRET_TYPE NOT NULL, -- Utilisation du type personnalisé
+    FOREIGN KEY (membre_id) REFERENCES membre(id),
+    FOREIGN KEY (exemplaire_id) REFERENCES exemplaire(id)
+);
 
--- Exemples d'insertion
-insert into adherent (nom,prenom,email,id_type_abonnement,adresse,etat,date_naissance) values ('nyeja','nyeja','nyeja@gmail.com',1,'itaosy','actif','2000-01-01');
-INSERT into utilisateur (username,password,role,adherent_id) values ('test','test','ADHERENT',1);
-INSERT into utilisateur (username,password,role,adherent_id) values ('biblio','biblio','BIBLIOTHECAIRE',NULL);
+CREATE TABLE prolongation (
+    id SERIAL PRIMARY KEY,
+    pret_id INT,
+    date_demande DATE,
+    statut PROLONGATION_STATUT DEFAULT 'EN_ATTENTE', -- Utilisation du type personnalisé
+    FOREIGN KEY (pret_id) REFERENCES pret(id)
+);
 
--- Ajout de livres
-INSERT INTO livre (titre, auteur, id_categorie, isbn, restriction) VALUES
-('Le Petit Prince', 'Antoine de Saint-Exupery', 1, '9782070612758', 'aucun'),
-('1984', 'George Orwell', 1, '9780451524935', 'adulte'),
-('Introduction', 'Thomas H. Cormen', 3, '9782744075786', 'aucun'),
-('Harry Potter', 'J.K. Rowling', 6, '9782070643028', 'aucun'),
-('L''Etranger', 'Albert Camus', 1, '9782070360024', 'adulte');
+CREATE TABLE reservation (
+    id SERIAL PRIMARY KEY,
+    membre_id INT,
+    exemplaire_id INT,
+    date_reservation DATE,
+    statut RESERVATION_STATUT DEFAULT 'EN_ATTENTE', -- Utilisation du type personnalisé
+    FOREIGN KEY (membre_id) REFERENCES membre(id),
+    FOREIGN KEY (exemplaire_id) REFERENCES exemplaire(id)
+);
 
--- Ajout d'exemplaires pour chaque livre
-INSERT INTO exemplaire (reference, id_livre, statut) VALUES
-('EX-PTP-001', 1, 'disponible'),
-('EX-PTP-002', 1, 'disponible'),
-('EX-1984-001', 2, 'disponible'),
-('EX-1984-002', 2, 'emprunte'),
-('EX-ALG-001', 3, 'disponible'),
-('EX-HP1-001', 4, 'disponible'),
-('EX-HP1-002', 4, 'reserve'),
-('EX-ETR-001', 5, 'disponible');
+-- Données initiales
+-- Utilisateurs
+INSERT INTO "user" (name, password, role) VALUES
+('admin', 'admin', 'ADMIN'),
+('bibliothecaire', 'biblio', 'BIBLIOTHECAIRE'),
+('membre', 'membre', 'MEMBRE');
 
--- ALTER TABLE pret ADD COLUMN nbprolongements integer DEFAULT 0;
--- -penalite tsisy resaka vola
--- prolengement
--- penalite 10j raha tsy nanatitra anlay boky a temps
--- rehefa tsy abonne tsony lay adherent dia tsy afaka manao inina fa afaka miditra systeme
+-- Catégories
+INSERT INTO categorie (nom, age_minimum) VALUES
+('Enfant', 0),
+('+18', 18),
+('Tous publics', 0);
 
--- reservation misy quota(jour)
--- prolengement na pret misy quota(jour)
+-- Livres
+INSERT INTO livre (titre, auteur, categorie_id) VALUES
+('Le Petit Prince', 'Antoine de Saint-Exupéry', 1),
+('1984', 'George Orwell', 2),
+('Fondation', 'Isaac Asimov', 3);
 
--- reservation tsy pretfa ny reservation lasa rpet le jour j, fa raha tsy mbla nanatitra boky izy d na nireserver za d tsy afaka manao pret
--- mila bidirectionnel ny rehetra:
+-- Exemplaires
+INSERT INTO exemplaire (livre_id, code_exemplaire, statut, localisation) VALUES
+(1, 'LP-001', 'DISPONIBLE', 'Étagère A1'),
+(1, 'LP-002', 'EMPRUNTE', 'Étagère A1'),
+(2, '1984-001', 'RESERVE', 'Étagère B2'),
+(3, 'FOND-001', 'DISPONIBLE', 'Étagère C3');
 
--- enregistrer lecture sur place mila tenenina kou d zao nou nalina d zao nou naverina,mbola pret fona lay izy
--- afaka manao reservation zay tina, afaka accepteny lay biblio fona 
--- duree anamerena anle boky dia miankina am profil 
--- tsy azo atao prolonger prolongement
--- -pret
+-- Membres
+INSERT INTO membre (nom, prenom, email, adresse, date_naissance, profil, type_inscription, statut_validation) VALUES
+('Rabe', 'Fara', 'fara@mail.com', 'Lot A, Ambohijatovo', '2000-01-01', 'ADULTE', 'EN_LIGNE', 'VALIDE'),
+('Koto', 'Mia', 'mia@mail.com', 'Lot B, Tana', '2010-03-15', 'ENFANT', 'SUR_PLACE', 'VALIDE'),
+('Rakoto', 'Jean', 'jean@mail.com', 'Lot C, Tana', '1980-12-20', 'ADULTE', 'SUR_PLACE', 'VALIDE'),
+('Andry', 'Nina', 'nina@mail.com', 'Lot Z, Tana', '2005-04-12', 'ETUDIANT', 'EN_LIGNE', 'EN_ATTENTE');
 
---- penalite kay manomboka amlay andro hanaterana ilay boky
--- Liste fonctionnalite atao anaty document
---- mila ampidirina anaty base ny prolongement genre hoe date taloha d date vaovao
+-- Adhésions
+INSERT INTO adhesion (membre_id, date_debut, date_expiration) VALUES
+(1, '2025-01-01', '2025-12-31'),
+(2, '2025-03-01', '2026-02-28'),
+(3, '2025-06-01', '2026-05-31');
 
+-- Cotisations
+INSERT INTO cotisation (membre_id, montant, date_paiement, annee) VALUES
+(1, 10000.00, '2025-01-01', 2025),
+(2, 5000.00, '2025-03-01', 2025),
+(3, 15000.00, '2025-06-01', 2025);
 
+-- Pénalités (exemple: membre 2 a une pénalité active)
+-- INSERT INTO penalite (membre_id, date_debut_penalite, date_fin_penalite, motif) VALUES
+-- (2, '2025-07-01', '2025-07-15', 'Retour de livre en retard');
 
+-- Prêts (quelques exemples)
+INSERT INTO pret (membre_id, exemplaire_id, date_emprunt, date_retour_prevue, type_pret) VALUES
+(1, 1, '2025-07-01', '2025-07-15', 'NORMAL'), -- Rabe Fara emprunte LP-001
+(2, 2, '2025-06-20', '2025-07-04', 'NORMAL'); -- Koto Mia emprunte LP-002 (en retard si après le 4/07)
 
-
---- reseervation tsy avadika pret (aza asina olana) quota reservation iany no misy               
----- prolongement vao miaccepter d mivadika pret
+-- Réservations
+INSERT INTO reservation (membre_id, exemplaire_id, date_reservation, statut) VALUES
+(3, 3, '2025-07-10', 'EN_ATTENTE'); -- Rakoto Jean réserve 1984-001
