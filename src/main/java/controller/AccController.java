@@ -20,13 +20,13 @@ public class AccController {
     // Affiche la page d'accueil (accueil.jsp)
     @GetMapping("/accueil")
     public String accueil() {
-        return "accueil"; // Compatible avec accueil.jsp, aucune donnée dynamique requise
+        return "accueil";
     }
 
     // Affiche le formulaire de connexion bibliothécaire (login.jsp)
     @GetMapping("/login")
     public String loginForm() {
-        return "login"; // Compatible avec login.jsp, aucun attribut requis
+        return "login";
     }
 
     // Traite la connexion bibliothécaire
@@ -37,9 +37,9 @@ public class AccController {
             HttpSession session,
             RedirectAttributes redirectAttributes) {
         Utilisateur utilisateur = utilisateurService.authenticate(username, password);
-        if (utilisateur != null && utilisateur.getRole().toString().equals("BIBLIOTHECAIRE")) {
+        if (utilisateur != null && utilisateur.getRole().name().equals("BIBLIOTHECAIRE")) {
             session.setAttribute("username", username);
-            session.setAttribute("role", utilisateur.getRole().toString());
+            session.setAttribute("role", utilisateur.getRole().name());
             return "redirect:/dashboard";
         } else {
             redirectAttributes.addFlashAttribute("erreur", "Nom d'utilisateur ou mot de passe incorrect.");
@@ -56,7 +56,7 @@ public class AccController {
             return "redirect:/login";
         }
         model.addAttribute("username", session.getAttribute("username"));
-        return "dashboard"; // Compatible avec dashboard.jsp
+        return "dashboard";
     }
 
     // Déconnexion bibliothécaire

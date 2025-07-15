@@ -1,7 +1,9 @@
-package model;
+package com.example.library.model;
 
+import com.example.library.enums.PretType;
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.util.Set;
 
 @Entity
 @Table(name = "pret")
@@ -11,53 +13,49 @@ public class Pret {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @ManyToOne
-    @JoinColumn(name = "id_exemplaire", nullable = false)
-    private Exemplaire exemplaire;
-
-    @ManyToOne
-    @JoinColumn(name = "id_adherent", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "membre_id", nullable = false)
     private Membre membre;
 
-    @Column(name = "date_emprunt", nullable = false)
-    private LocalDateTime dateEmprunt;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "exemplaire_id", nullable = false)
+    private Exemplaire exemplaire;
 
-    @Column(name = "date_retour_prevue", nullable = false)
-    private LocalDateTime dateRetourPrevue;
+    @Column(name = "date_emprunt")
+    private LocalDate dateEmprunt;
+
+    @Column(name = "date_retour_prevue")
+    private LocalDate dateRetourPrevue;
 
     @Column(name = "date_retour_effective")
-    private LocalDateTime dateRetourEffective;
+    private LocalDate dateRetourEffective;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "type_pret", nullable = false)
-    private TypePret typePret;
+    @Column(name = "type_pret", columnDefinition = "pret_type")
+    private PretType typePret;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private StatutPret statut;
+    @OneToMany(mappedBy = "pret", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Set<Prolongation> prolongations;
 
-    @Column(name = "nbprolongements", nullable = false)
-    private Integer nbProlongements = 0;
+    // Constructeurs
+    public Pret() {
+    }
 
-    @ManyToOne
-    @JoinColumn(name = "id_pret_origine")
-    private Pret pretOrigine;
+    public Pret(Membre membre, Exemplaire exemplaire, LocalDate dateEmprunt, LocalDate dateRetourPrevue, PretType typePret) {
+        this.membre = membre;
+        this.exemplaire = exemplaire;
+        this.dateEmprunt = dateEmprunt;
+        this.dateRetourPrevue = dateRetourPrevue;
+        this.typePret = typePret;
+    }
 
-    // Getters and Setters
+    // Getters et Setters
     public Integer getId() {
         return id;
     }
 
     public void setId(Integer id) {
         this.id = id;
-    }
-
-    public Exemplaire getExemplaire() {
-        return exemplaire;
-    }
-
-    public void setExemplaire(Exemplaire exemplaire) {
-        this.exemplaire = exemplaire;
     }
 
     public Membre getMembre() {
@@ -68,67 +66,61 @@ public class Pret {
         this.membre = membre;
     }
 
-    public LocalDateTime getDateEmprunt() {
+    public Exemplaire getExemplaire() {
+        return exemplaire;
+    }
+
+    public void setExemplaire(Exemplaire exemplaire) {
+        this.exemplaire = exemplaire;
+    }
+
+    public LocalDate getDateEmprunt() {
         return dateEmprunt;
     }
 
-    public void setDateEmprunt(LocalDateTime dateEmprunt) {
+    public void setDateEmprunt(LocalDate dateEmprunt) {
         this.dateEmprunt = dateEmprunt;
     }
 
-    public LocalDateTime getDateRetourPrevue() {
+    public LocalDate getDateRetourPrevue() {
         return dateRetourPrevue;
     }
 
-    public void setDateRetourPrevue(LocalDateTime dateRetourPrevue) {
+    public void setDateRetourPrevue(LocalDate dateRetourPrevue) {
         this.dateRetourPrevue = dateRetourPrevue;
     }
 
-    public LocalDateTime getDateRetourEffective() {
+    public LocalDate getDateRetourEffective() {
         return dateRetourEffective;
     }
 
-    public void setDateRetourEffective(LocalDateTime dateRetourEffective) {
+    public void setDateRetourEffective(LocalDate dateRetourEffective) {
         this.dateRetourEffective = dateRetourEffective;
     }
 
-    public TypePret getTypePret() {
+    public PretType getTypePret() {
         return typePret;
     }
 
-    public void setTypePret(TypePret typePret) {
+    public void setTypePret(PretType typePret) {
         this.typePret = typePret;
     }
 
-    public StatutPret getStatut() {
-        return statut;
+    public Set<Prolongation> getProlongations() {
+        return prolongations;
     }
 
-    public void setStatut(StatutPret statut) {
-        this.statut = statut;
+    public void setProlongations(Set<Prolongation> prolongations) {
+        this.prolongations = prolongations;
     }
 
-    public Integer getNbProlongements() {
-        return nbProlongements;
+    @Override
+    public String toString() {
+        return "Pret{" +
+               "id=" + id +
+               ", dateEmprunt=" + dateEmprunt +
+               ", dateRetourPrevue=" + dateRetourPrevue +
+               ", typePret=" + typePret +
+               '}';
     }
-
-    public void setNbProlongements(Integer nbProlongements) {
-        this.nbProlongements = nbProlongements;
-    }
-
-    public Pret getPretOrigine() {
-        return pretOrigine;
-    }
-
-    public void setPretOrigine(Pret pretOrigine) {
-        this.pretOrigine = pretOrigine;
-    }
-}
-
-enum TypePret {
-    SUR_PLACE, EMPORTE
-}
-
-enum StatutPret {
-    EN_COURS, TERMINE, EN_RETARD
 }

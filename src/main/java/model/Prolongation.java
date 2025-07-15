@@ -1,7 +1,8 @@
-package model;
+package com.example.library.model;
 
+import com.example.library.enums.ProlongationStatut;
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "prolongation")
@@ -11,18 +12,28 @@ public class Prolongation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pret_id", nullable = false)
     private Pret pret;
 
-    @Column(name = "date_demande", nullable = false)
-    private LocalDateTime dateDemande;
+    @Column(name = "date_demande")
+    private LocalDate dateDemande;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private StatutProlongation statut;
+    @Column(columnDefinition = "prolongation_statut default 'EN_ATTENTE'")
+    private ProlongationStatut statut;
 
-    // Getters and Setters
+    // Constructeurs
+    public Prolongation() {
+    }
+
+    public Prolongation(Pret pret, LocalDate dateDemande, ProlongationStatut statut) {
+        this.pret = pret;
+        this.dateDemande = dateDemande;
+        this.statut = statut;
+    }
+
+    // Getters et Setters
     public Integer getId() {
         return id;
     }
@@ -39,23 +50,29 @@ public class Prolongation {
         this.pret = pret;
     }
 
-    public LocalDateTime getDateDemande() {
+    public LocalDate getDateDemande() {
         return dateDemande;
     }
 
-    public void setDateDemande(LocalDateTime dateDemande) {
+    public void setDateDemande(LocalDate dateDemande) {
         this.dateDemande = dateDemande;
     }
 
-    public StatutProlongation getStatut() {
+    public ProlongationStatut getStatut() {
         return statut;
     }
 
-    public void setStatut(StatutProlongation statut) {
+    public void setStatut(ProlongationStatut statut) {
         this.statut = statut;
     }
-}
 
-enum StatutProlongation {
-    EN_ATTENTE, ACCEPTEE, REFUSEE
+    @Override
+    public String toString() {
+        return "Prolongation{" +
+               "id=" + id +
+               ", pretId=" + (pret != null ? pret.getId() : "null") +
+               ", dateDemande=" + dateDemande +
+               ", statut=" + statut +
+               '}';
+    }
 }
