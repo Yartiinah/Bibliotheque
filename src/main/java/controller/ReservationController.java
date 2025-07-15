@@ -1,109 +1,152 @@
 package controller;
 
+import model.Reservation;
+import model.Adherent;
+import model.Livre;
+import model.Exemplaire;
+import service.ReservationService;
+import service.AdherentService;
+import service.PretService;
+import repository.AdherentRepository;
+import repository.ReservationRepository;
+import repository.ExemplaireRepository;
+import repository.LivreRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
 import jakarta.servlet.http.HttpSession;
-import service.EmpruntService;
-import service.ReservationService;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
-@RequestMapping("/reservation")
 public class ReservationController {
-
-    @Autowired
-    private EmpruntService empruntService;
-
     @Autowired
     private ReservationService reservationService;
+    private ReservationRepository reservationRepository;
+    @Autowired
+    private AdherentService adherentService;
+        @Autowired
+    private AdherentRepository adherentRepository;
+    @Autowired
+    private ExemplaireRepository exemplaireRepository;
+    
+    @Autowired
+    private LivreRepository livreRepository;
+    @Autowired
+    private PretService pretService;
 
-    // Vérifie si l'utilisateur est un bibliothécaire
-    private boolean isBibliothecaire(HttpSession session, RedirectAttributes redirectAttributes) {
-        String role = (String) session.getAttribute("role");
-        if (role == null || !role.equals("BIBLIOTHECAIRE")) {
-            redirectAttributes.addFlashAttribute("erreur", "Accès non autorisé.");
-            return false;
-        }
-        return true;
+    @GetMapping("/reservation/choisir-exemplaire")
+    public String choisirExemplaire(@RequestParam("livreId") Integer livreId, Model model){
+        List<Exemplaire> exemplaires = exemplaireRepository.findByLivre(livreRepository.findById(livreId).orElse(null));
+        model.addAttribute("livre", livreRepository.findById(livreId).orElse(null));
+        model.addAttribute("exemplaires", exemplaires);
+        return "choisirExemplaire";
     }
 
-    // Affiche le formulaire de réservation (reservationForm.jsp)
-    @GetMapping("/form")
-    public String reservationForm(HttpSession session, Model model, RedirectAttributes redirectAttributes) {
-        Membre membre = (Membre) session.getAttribute("membreConnecte");
-        if (membre == null) {
-            redirectAttributes.addFlashAttribute("erreur", "Veuillez vous connecter.");
-            return "redirect:/membre/login-form";
+    @PostMapping("/reservation/demander")
+    public String demanderReservation(@RequestParam("exemplaireId") Integer exemplaireId,@RequestParam("dateDemande") String dateDemande,Model model,HttpSession session){
+        model.Utilisateur user = (model.Utilisateur) session.getAttribute("user");
+        Integer adherentId = user.getAdherent().getId();
+
+        Adherent adherent = adherentRepository.findById(adherentId).orElse(null);
+        Exemplaire exemplaire = exemplaireRepository.findById(exemplaireId).orElse(null);
+        Livre livre = exemplaire.getLivre();
+        LocalDateTime dateDemandeParsed = LocalDate.parse(dateDemande).atStartOfDay();
+        // Restriction d'âge
+        if(livre.getRestriction().equals("adulte")){
+            if(adherent.getTypeAbonnement().getLibelle().equals("enfant")){
+                model.addAttribute("livre", livre);
+                model.addAttribute("exemplaires", exemplaireRepository.findByLivre(livre));
+                model.addAttribute("erreur", "Ce livre est réservé aux plus de 18 ans.");
+                return "choisirExemplaire";
+            }
         }
-        model.addAttribute("exemplaires", empruntService.getExemplairesDisponibles());
-        return "reservationForm";
+        // Vérification du quota de réservation
+        int quota = adherent.getTypeAbonnement().getQuotaReservation();
+        long nbReservationsEnCours = reservationService.getReservationsByAdherent(adherentId).stream()
+            .filter(r -> "en_attente".equals(r.getStatut()) || "acceptee".equals(r.getStatut()))
+            .count();
+        if (nbReservationsEnCours >= quota) {
+            String message = "Vous avez atteint votre quota de réservations (" + nbReservationsEnCours + "/" + quota + ").";
+            model.addAttribute("livre", livre);
+            model.addAttribute("exemplaires", exemplaireRepository.findByLivre(livre));
+            model.addAttribute("erreur", message);
+            return "choisirExemplaire";
+        }
+        // Vérification disponibilité exemplaire à la date choisie
+        /* if (reservationService.isExemplaireReserveOuEmprunteA(exemplaireId, dateDemandeParsed)) {
+            model.addAttribute("livre", livre);
+            model.addAttribute("exemplaires", exemplaireRepository.findByLivre(livre));
+            model.addAttribute("erreur", "Cet exemplaire n'est pas disponible à la date choisie.");
+            return "choisirExemplaire";
+        } */
+        Reservation reservation = new Reservation();
+        reservation.setAdherent(adherent);
+        reservation.setExemplaire(exemplaire);
+        reservation.setDateDemande(dateDemandeParsed);
+        reservation.setStatut("en_attente"); // Statut initial
+        reservationService.save(reservation);
+        model.addAttribute("message", "Réservation demandée avec succès !");
+        return "redirect:mesReservations";
     }
 
-    // Effectue une réservation
-    @PostMapping("/reserver")
-    public String reserver(
-            @RequestParam int exemplaireId,
-            HttpSession session,
-            RedirectAttributes redirectAttributes) {
-        Membre membre = (Membre) session.getAttribute("membreConnecte");
-        if (membre == null) {
-            redirectAttributes.addFlashAttribute("erreur", "Veuillez vous connecter.");
-            return "redirect:/membre/login-form";
-        }
-        try {
-            boolean success = reservationService.reserver(membre.getId(), exemplaireId);
-            redirectAttributes.addFlashAttribute("message", success ? "Réservation effectuée avec succès." : "Erreur lors de la réservation.");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("erreur", "Erreur : exemplaire non disponible.");
-        }
-        return "redirect:/reservation/form";
+    // Bibliothécaire : liste des réservations à valider
+    @GetMapping("/reservation/attente")
+    public String reservationsEnAttente(Model model) {
+        List<Reservation> reservations = reservationService.getReservationsEnAttente();
+        model.addAttribute("reservations", reservations);
+        return "reservationsAttente";
     }
 
-    // Affiche la gestion des réservations (gestionReservations.jsp)
-    @GetMapping("/gestion")
-    public String gestionReservations(HttpSession session, Model model, RedirectAttributes redirectAttributes) {
-        if (!isBibliothecaire(session, redirectAttributes)) {
-            return "redirect:/login";
+    // Bibliothécaire : détail d'une réservation
+    @GetMapping("/reservation/detail")
+    public String detailReservation(@RequestParam Integer id, Model model) {
+        Optional<Reservation> opt = reservationService.getById(id);
+        if (opt.isPresent()) {
+            Reservation reservation = opt.get();
+            model.addAttribute("reservation", reservation);
+            // Ajoute les infos de l'adhérent, ses prêts, etc.
+            model.addAttribute("adherent", reservation.getAdherent());
+            model.addAttribute("prets", pretService.getPretsByAdherent(reservation.getAdherent().getId()));
+            return "reservationDetail";
         }
-        model.addAttribute("reservations", reservationService.getReservationsEnAttente());
-        return "gestionReservations";
+        model.addAttribute("message", "Réservation introuvable");
+        return "redirect:/reservation/attente";
     }
 
-    // Accepte une réservation
-    @PostMapping("/accepter")
-    public String accepterReservation(
-            @RequestParam int id,
-            HttpSession session,
-            RedirectAttributes redirectAttributes) {
-        if (!isBibliothecaire(session, redirectAttributes)) {
-            return "redirect:/login";
-        }
-        try {
-            reservationService.accepterReservation(id);
-            redirectAttributes.addFlashAttribute("message", "Réservation acceptée avec succès.");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("erreur", "Erreur lors de l'acceptation de la réservation.");
-        }
-        return "redirect:/reservation/gestion";
+    @GetMapping("/reservation/mesReservations")
+    public String mesReservations(Model model, HttpSession session) {
+        model.Utilisateur user = (model.Utilisateur) session.getAttribute("user");
+        Integer adherentId = user.getAdherent().getId();
+        List<Reservation> reservations = reservationService.getReservationsByAdherent(adherentId);
+        model.addAttribute("reservations", reservations);
+        return "mesReservations";
     }
 
-    // Refuse une réservation
-    @PostMapping("/refuser")
-    public String refuserReservation(
-            @RequestParam int id,
-            HttpSession session,
-            RedirectAttributes redirectAttributes) {
-        if (!isBibliothecaire(session, redirectAttributes)) {
-            return "redirect:/login";
+    // Bibliothécaire : accepter/refuser
+    @PostMapping("/reservation/valider")
+    public String validerReservation(@RequestParam("id") Integer id, @RequestParam("action") String action, Model model, RedirectAttributes redirectAttributes) {
+        Optional<Reservation> opt = reservationService.getById(id);
+        if (opt.isPresent()) {
+            Reservation reservation = opt.get();
+            if ("accepter".equals(action)) {
+                reservation.setStatut("acceptee");
+                reservationService.save(reservation);
+                // Redirige vers le formulaire d'ajout de prêt, en passant les infos nécessaires
+                return "redirect:/prets/ajouter?adherentId=" + reservation.getAdherent().getId()
+                        + "&referenceExemplaire=" + reservation.getExemplaire().getReference()
+                        + "&dateEmprunt=" + reservation.getDateDemande().toLocalDate()
+                        + "&reservationId=" + reservation.getId();
+            } else {
+                reservation.setStatut("refusee");
+                reservationService.save(reservation);
+            }
         }
-        try {
-            reservationService.refuserReservation(id);
-            redirectAttributes.addFlashAttribute("message", "Réservation refusée avec succès.");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("erreur", "Erreur lors du refus de la réservation.");
-        }
-        return "redirect:/reservation/gestion";
+        return "redirect:/reservation/attente";
     }
 }

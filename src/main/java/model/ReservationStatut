@@ -1,7 +1,0 @@
-package com.example.library.enums;
-
-public enum ReservationStatut {
-    EN_ATTENTE,
-    CONFIRMEE,
-    ANNULEE
-}
