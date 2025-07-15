@@ -1,31 +1,31 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%-- src/main/webapp/WEB-INF/jsp/loginMembre.jsp --%>
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
     <title>Connexion Membre</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-    <div class="container mt-5">
-        <h2>Connexion Membre</h2>
-        <c:if test="${not empty erreur}">
-            <div class="alert alert-danger">${erreur}</div>
-        </c:if>
-        <form action="<c:url value='/membre/login' />" method="post">
-            <div class="mb-3">
-                <label for="email" class="form-label">Email</label>
-                <input type="email" class="form-control" id="email" name="email" required>
-            </div>
-            <div class="mb-3">
-                <label for="nom" class="form-label">Nom</label>
-                <input type="text" class="form-control" id="nom" name="nom" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Se connecter</button>
-            <a href="<c:url value='/membre/inscription-form-en-ligne' />" class="btn btn-secondary">S'inscrire</a>
-        </form>
-    </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <h1>Connexion Membre</h1>
+
+    <c:if test="${not empty message}">
+        <p style="color: green;">${message}</p>
+    </c:if>
+    <c:if test="${not empty erreur}">
+        <p style="color: red;">${erreur}</p>
+    </c:if>
+
+    <form action="/login-membre" method="post"> <%-- Cette URL devrait être gérée par AccController pour l'authentification --%>
+        <label for="username">Email:</label><br> <%-- Ou nom d'utilisateur, selon votre DB --%>
+        <input type="text" id="username" name="username" required><br><br>
+
+        <label for="password">Mot de passe:</label><br>
+        <input type="password" id="password" name="password" required><br><br>
+
+        <input type="submit" value="Se connecter">
+    </form>
+    <br/>
+    <a href="/inscription-form-en-ligne">Pas encore inscrit ?</a>
+    <br/>
+    <a href="/accueil">Retour à l'accueil</a>
 </body>
 </html>
