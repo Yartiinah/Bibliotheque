@@ -30,7 +30,6 @@ public class PretController {
     public String showForm(Model model, HttpSession session) {
         model.addAttribute("exemplaires", exemplaireRepository.findAll());
         model.addAttribute("adherents", adherentRepository.findAll());
-        // Vérification du rôle
         Object userObj = session.getAttribute("user");
         if (userObj == null || !"BIBLIOTHECAIRE".equals(((model.Utilisateur)userObj).getRole())) {
             return "redirect:/login";
@@ -45,7 +44,6 @@ public class PretController {
                            @RequestParam(value = "dateEmprunt") String dateEmprunt,
                            @RequestParam(value = "reservationId", required = false) Integer reservationId,
                            Model model, HttpSession session) {
-        // Vérification du rôle
         Object userObj = session.getAttribute("user");
         if (userObj == null || !"BIBLIOTHECAIRE".equals(((model.Utilisateur)userObj).getRole())) {
             return "redirect:/login";
@@ -59,7 +57,6 @@ public class PretController {
 
     @GetMapping("/liste")
     public String listePrets(Model model, HttpSession session) {
-        // Vérification du rôle
         Object userObj = session.getAttribute("user");
         if (userObj == null || !"BIBLIOTHECAIRE".equals(((model.Utilisateur)userObj).getRole())) {
             return "redirect:/login";
@@ -71,7 +68,6 @@ public class PretController {
 
     @GetMapping("/pretsAdherent")
     public String pretsAdherent(@RequestParam("adherentId") Integer adherentId, Model model, HttpSession session) {
-        // Vérification du rôle
         Object userObj = session.getAttribute("user");
         if (userObj == null || !"BIBLIOTHECAIRE".equals(((model.Utilisateur)userObj).getRole())) {
             return "redirect:/login";
@@ -91,16 +87,13 @@ public class PretController {
     public String rechercherPret(@RequestParam(value = "referenceExemplaire", required = false) String reference,
                                 @RequestParam(value = "dateEmprunt", required = false) String dateEmprunt,
                                 Model model, HttpSession session) {
-        // Vérification du rôle
         Object userObj = session.getAttribute("user");
         if (userObj == null || !"BIBLIOTHECAIRE".equals(((model.Utilisateur)userObj).getRole())) {
             return "redirect:/login";
         }
-        
         model.addAttribute("exemplaires", exemplaireRepository.findAll());
         model.addAttribute("referenceExemplaire", reference);
         model.addAttribute("dateEmprunt", dateEmprunt);
-        
         if (reference != null && !reference.trim().isEmpty()) {
             Exemplaire exemplaire = exemplaireRepository.findByReference(reference).orElse(null);
             if (exemplaire != null) {
@@ -128,39 +121,30 @@ public class PretController {
     public String modifierDateRetourEffective(@RequestParam("pretId") Integer pretId,
                                              @RequestParam("nouvelleDateRetourEffective") String nouvelleDateRetourEffective,
                                              Model model, HttpSession session) {
-        // Vérification du rôle
         Object userObj = session.getAttribute("user");
         if (userObj == null || !"BIBLIOTHECAIRE".equals(((model.Utilisateur)userObj).getRole())) {
             return "redirect:/login";
         }
-        
         try {
             String message = pretService.modifierDateRetourEffective(pretId, nouvelleDateRetourEffective);
             model.addAttribute("message", message);
         } catch (IllegalArgumentException e) {
             model.addAttribute("error", e.getMessage());
         }
-        
-        // Recharger les données pour l'affichage
         model.addAttribute("exemplaires", exemplaireRepository.findAll());
-        
-        // Récupérer le prêt modifié pour l'afficher
         Pret pret = pretService.pretRepository.findById(pretId).orElse(null);
         if (pret != null) {
             model.addAttribute("pret", pret);
         }
-        
         return "rechercherPret";
     }
 
     @GetMapping("/retour")
     public String retourPret(@RequestParam("id") Integer idPret, Model model, HttpSession session) {
-        // Vérification du rôle
         Object userObj = session.getAttribute("user");
         if (userObj == null || !"BIBLIOTHECAIRE".equals(((model.Utilisateur)userObj).getRole())) {
             return "redirect:/login";
         }
-        
         Pret pret = pretService.pretRepository.findById(idPret).orElse(null);
         if (pret != null) {
             String message = pretService.retourPret(idPret);
@@ -168,8 +152,6 @@ public class PretController {
         } else {
             model.addAttribute("message", "Prêt introuvable.");
         }
-        
-        // Recharger les données pour l'affichage
         model.addAttribute("exemplaires", exemplaireRepository.findAll());
         return "rechercherPret";
     }
@@ -187,17 +169,39 @@ public class PretController {
     }
 
     @GetMapping("/prolonger")
-    public String prolongerPret(@RequestParam("id") Integer idPret, Model model, HttpSession session) {
+    public String showProlongerPretForm(Model model, HttpSession session) {
         model.Utilisateur user = (model.Utilisateur) session.getAttribute("user");
         if (user == null || user.getAdherent() == null) {
             return "redirect:/login";
         }
         Integer adherentId = user.getAdherent().getId();
-        String message = pretService.prolongerPret(idPret, adherentId); 
-        List<Pret> prets = pretService.getPretsByAdherentId(adherentId);
+        List<Pret> prets = pretService.getPretsByAdherentId(adherentId).stream()
+                .filter(p -> "en_cours".equals(p.getStatut()))
+                .toList();
         model.addAttribute("prets", prets);
-        model.addAttribute("message", message);
-        return "mesPrets";
+        return "prolongerPret";
+    }
+
+    @PostMapping("/prolonger")
+    public String prolongerPret(@RequestParam("pretId") Integer pretId,
+                               @RequestParam("nouvelleDateRetourPrevue") String nouvelleDateRetourPrevue,
+                               Model model, HttpSession session) {
+        model.Utilisateur user = (model.Utilisateur) session.getAttribute("user");
+        if (user == null || user.getAdherent() == null) {
+            return "redirect:/login";
+        }
+        Integer adherentId = user.getAdherent().getId();
+        try {
+            String message = pretService.prolongerPret(pretId, adherentId, nouvelleDateRetourPrevue);
+            model.addAttribute("message", message);
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("error", e.getMessage());
+        }
+        List<Pret> prets = pretService.getPretsByAdherentId(adherentId).stream()
+                .filter(p -> "en_cours".equals(p.getStatut()))
+                .toList();
+        model.addAttribute("prets", prets);
+        return "prolongerPret";
     }
 
     @GetMapping("/ajouter")
@@ -212,7 +216,6 @@ public class PretController {
         if (referenceExemplaire != null) model.addAttribute("referenceExemplaire", referenceExemplaire);
         if (dateEmprunt != null) model.addAttribute("dateEmprunt", dateEmprunt);
         if (reservationId != null) model.addAttribute("reservationId", reservationId);
-        // Vérification du rôle
         Object userObj = session.getAttribute("user");
         if (userObj == null || !"BIBLIOTHECAIRE".equals(((model.Utilisateur)userObj).getRole())) {
             return "redirect:/login";
