@@ -1,31 +1,31 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Connexion Bibliothécaire</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Connexion</title>
+    <style>
+        .page-container { max-width: 400px; margin: 60px auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 8px #ccc; }
+        h2 { color: #2c3e50; text-align: center; }
+        form { display: flex; flex-direction: column; gap: 15px; }
+        label { font-weight: bold; color: #34495e; }
+        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #2980b9; color: #fff; border: none; padding: 10px 20px; border-radius: 4px; font-size: 16px; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: #1c5d8c; }
+    </style>
 </head>
 <body>
-    <div class="container mt-5">
-        <h2>Connexion Bibliothécaire</h2>
-        <c:if test="${not empty erreur}">
-            <div class="alert alert-danger">${erreur}</div>
-        </c:if>
-        <form action="<c:url value='/login' />" method="post">
-            <div class="mb-3">
-                <label for="username" class="form-label">Nom d'utilisateur</label>
-                <input type="text" class="form-control" id="username" name="username" required>
-            </div>
-            <div class="mb-3">
-                <label for="password" class="form-label">Mot de passe</label>
-                <input type="password" class="form-control" id="password" name="password" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Se connecter</button>
-            <a href="<c:url value='/accueil' />" class="btn btn-secondary">Retour</a>
+    <div class="page-container">
+        <h2>Connexion</h2>
+        <form method="post" action="${pageContext.request.contextPath}/login/verifierConnexion">
+            <label for="username">Nom d'utilisateur :</label>
+            <input type="text" id="username" name="username" required><br>
+            <label for="password">Mot de passe :</label>
+            <input type="password" id="password" name="password" required><br>
+            <button type="submit">Se connecter</button>
         </form>
+        <c:if test="${not empty error}">
+            <p style="color:red;">${error}</p>
+        </c:if>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

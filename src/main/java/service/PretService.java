@@ -1,0 +1,274 @@
+package service;
+
+import model.Pret;
+import model.Exemplaire;
+import model.Adherent;
+import model.Livre;
+import model.TypeAbonnement;
+import model.HistoriquePret;
+import service.HistoriquePretService;
+import service.JourFerieService;
+import repository.PretRepository;
+import repository.ExemplaireRepository;
+import repository.AdherentRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.List;
+import model.Penalite;
+import repository.PenaliteRepository;
+
+@Service
+public class PretService {
+    @Autowired
+    public PretRepository pretRepository;
+    @Autowired
+    private ExemplaireRepository exemplaireRepository;
+    @Autowired
+    private AdherentRepository adherentRepository;
+    @Autowired
+    private HistoriquePretService historiquePretService;
+    @Autowired
+    private AdherentService adherentService;
+    @Autowired
+    private JourFerieService jourFerieService;
+
+    @Autowired
+    private PenaliteRepository penaliteRepository;
+    @Autowired
+    private repository.ReservationRepository reservationRepository;
+
+    public String creerPret(Integer adherentId, String referenceExemplaire, LocalDateTime dateEmprunt, String typePret) {
+        Optional<Adherent> adherentOpt = adherentRepository.findById(adherentId);
+        if (adherentOpt.isEmpty()) return "Adhérent introuvable";
+        Adherent adherent = adherentOpt.get();
+        if (!adherentService.isInscriptionValide(adherent)) {
+            return "Votre abonnement n'est plus valide. Veuillez le renouveler.";
+        }
+        if (!"actif".equals(adherent.getEtat())) return "Veuillez renouveler votre abonnement";
+
+        if (penaliteRepository.existsByAdherentAndDateFinAfter(adherent, dateEmprunt)) {
+                return "Cet adherent est pénalisé jusqu'à la date " +
+                penaliteRepository.findFirstByAdherentAndDateFinAfterOrderByDateFinDesc(adherent, dateEmprunt).getDateFin();
+        }
+
+        Exemplaire exemplaires = exemplaireRepository.findByReference(referenceExemplaire).orElse(null);
+        Livre livre = exemplaires.getLivre();
+        if(livre.getRestriction().equals("adulte")){
+            if(adherent.getTypeAbonnement().getLibelle().equals("enfant")){
+                return "Ce livre est reserve au plus de 18 ans";
+            }
+        }
+        
+        // Vérifier pénalités impayées (à implémenter selon ta logique)
+        // Vérifier quota d'emprunt
+        int quota = adherent.getTypeAbonnement().getQuotaLivre();
+        long nbPretsEnCours = pretRepository.findAll().stream()
+            .filter(p -> p.getAdherent().getId() == adherentId && "en_cours".equals(p.getStatut()))
+            .count();
+        if (nbPretsEnCours >= quota) {
+            return "Limite d'emprunts atteinte (" + nbPretsEnCours + "/" + quota + " livres)";
+        }
+
+        Optional<Exemplaire> exemplaireOpt = exemplaireRepository.findByReference(referenceExemplaire);
+        if (exemplaireOpt.isEmpty()) return "Exemplaire introuvable";
+        Exemplaire exemplaire = exemplaireOpt.get();
+        if (!"disponible".equals(exemplaire.getStatut())) return "Cet exemplaire n'est pas empruntable";
+
+        // Vérifier restriction livre (ex: adulte seulement)
+        // TODO: à compléter selon ta logique
+
+        // Calculer la durée selon le type d'abonnement
+        TypeAbonnement abo = adherent.getTypeAbonnement();
+        int duree = abo.getDureePretJour();
+        LocalDateTime now = dateEmprunt;
+
+        LocalDateTime retourInitial = now.plusDays(duree);
+        LocalDateTime retour = jourFerieService.ajusterDateRetour(retourInitial);
+
+        Pret pret = new Pret();
+        pret.setAdherent(adherent);
+        pret.setExemplaire(exemplaire);
+        pret.setDateEmprunt(now);
+        pret.setDateRetourPrevue(retour);
+        pret.setTypePret(typePret);
+        pret.setStatut("en_cours");
+        pretRepository.save(pret);
+        exemplaire.setStatut("emprunte");
+        exemplaireRepository.save(exemplaire);
+        // Historique : création de prêt
+        HistoriquePret hist = new HistoriquePret();
+        hist.setPret(pret);
+        hist.setAction("emprunt");
+        hist.setDateAction(now);
+        hist.setCommentaire("Prêt créé");
+        historiquePretService.save(hist);
+        // TODO: envoyer email de confirmation
+        return "Prêt enregistré avec succès. Date de retour : " + retour;
+    }
+
+public String prolongerPret(Integer pretId, Integer adherentId) {
+    Pret pret = pretRepository.findById(pretId).orElse(null);
+    if (pret == null || pret.getAdherent().getId() != adherentId || !"en_cours".equals(pret.getStatut())) {
+        return "Prêt introuvable ou non prolongeable";
+    }
+    Adherent adherent = pret.getAdherent();
+    if (!adherentService.isInscriptionValide(adherent)) {
+        return "Votre abonnement n'est plus valide. Veuillez le renouveler.";
+    }
+    if (!"actif".equals(adherent.getEtat())) {
+        return "Vous êtes pénalisé, prolongement impossible";
+    }
+    TypeAbonnement abo = adherent.getTypeAbonnement();
+    if (pret.getNbProlongements() >= abo.getQuotaProlongement()) {
+        return "Quota de prolongements atteint";
+    }
+    // Vérification des réservations sur la période de prolongation
+    java.time.LocalDateTime ancienneDateRetour = pret.getDateRetourPrevue();
+    java.time.LocalDateTime nouvelleDateRetour = ancienneDateRetour.plusDays(abo.getNbJourProlongement());
+    List<model.Reservation> reservations = reservationRepository.findByExemplaireId(pret.getExemplaire().getId());
+    for (model.Reservation r : reservations) {
+        if (("en_attente".equals(r.getStatut()) || "acceptee".equals(r.getStatut()))
+            && r.getAdherent().getId() != adherentId
+            && !r.getDateDemande().isBefore(ancienneDateRetour)
+            && !r.getDateDemande().isAfter(nouvelleDateRetour)) {
+            return "Impossible de prolonger : une réservation existe sur la période de prolongation (" + r.getAdherent().getNom() + ", date : " + r.getDateDemande().toLocalDate() + ")";
+        }
+    }
+
+    // Clôturer l'ancien prêt
+    pret.setStatut("termine");
+    pret.setDateRetourEffective(ancienneDateRetour);
+    pretRepository.save(pret);
+
+    // Créer un nouveau prêt pour le prolongement
+    Pret nouveauPret = new Pret();
+    nouveauPret.setAdherent(adherent);
+    nouveauPret.setExemplaire(pret.getExemplaire());
+    nouveauPret.setDateEmprunt(ancienneDateRetour);
+    nouveauPret.setDateRetourPrevue(nouvelleDateRetour);
+    nouveauPret.setTypePret(pret.getTypePret());
+    nouveauPret.setStatut("en_cours");
+    nouveauPret.setNbProlongements(pret.getNbProlongements() + 1);
+    nouveauPret.setPretOrigine(pret); // lien vers le prêt d'origine
+    pretRepository.save(nouveauPret);
+
+    // Historique : prolongement
+    HistoriquePret hist = new HistoriquePret();
+    hist.setPret(nouveauPret);
+    hist.setAction("prolongement");
+    hist.setDateAction(java.time.LocalDateTime.now());
+    hist.setCommentaire("Prolongement validé (prêt d'origine #" + pret.getId() + ")");
+    historiquePretService.save(hist);
+
+    return "Prolongement effectué avec succès (nouveau prêt créé)";
+}
+
+    public String retourPret(Integer pretId){
+        Pret pret = pretRepository.findById(pretId).orElse(null);
+        if(pret==null) return "Prêt introuvable";
+        Adherent adherent = pret.getAdherent();
+        // if (!adherentService.isInscriptionValide(adherent)) {
+        //     return "Votre abonnement n'est plus valide. Veuillez le renouveler.";
+        // }
+        Exemplaire exemplaire = pret.getExemplaire();
+        exemplaire.setStatut("disponible");
+        pret.setDateRetourEffective(LocalDateTime.now());
+        pret.setStatut("termine");
+        pretRepository.save(pret);
+        exemplaireRepository.save(exemplaire);
+        // Historique : retour
+        HistoriquePret hist = new HistoriquePret();
+        hist.setPret(pret);
+        hist.setAction("retour");
+        hist.setDateAction(LocalDateTime.now());
+        hist.setCommentaire("Retour effectué");
+        historiquePretService.save(hist);
+
+        if (pret.getDateRetourPrevue() != null && LocalDateTime.now().isAfter(pret.getDateRetourPrevue())) {
+            Penalite penalite = new Penalite();
+            penalite.setAdherent(adherent);
+            penalite.setPret(pret);
+            penalite.setDateDebut(LocalDateTime.now());
+            penalite.setDateFin(LocalDateTime.now().plusDays(10));
+            penalite.setReglee(false);
+            penaliteRepository.save(penalite);
+        }
+
+        
+
+        return "Retour enregistré avec succès pour le prêt ID " + pretId;
+    }
+
+    public List<Pret> getPretsByAdherent(Integer adherentId) {
+        return pretRepository.findAll().stream()
+            .filter(p -> p.getAdherent().getId() == adherentId)
+            .toList();
+    }
+
+    public List<Pret> getPretsByAdherentId(Integer adherentId) {
+        return pretRepository.findByAdherentId(adherentId);
+    }
+
+    public void creerPretDepuisReservation(model.Reservation reservation,String typePret) {
+        model.Pret pret = new model.Pret();
+        pret.setAdherent(reservation.getAdherent());
+        pret.setExemplaire(reservation.getExemplaire());
+        pret.setDateEmprunt(reservation.getDateDemande());
+        int duree = reservation.getAdherent().getTypeAbonnement().getDureePretJour();
+        pret.setDateRetourPrevue(reservation.getDateDemande().plusDays(duree));
+        pret.setStatut("en_cours");
+        pret.setTypePret(typePret); // "reservation" ou autre type selon ta logique
+        pretRepository.save(pret);
+        // Met à jour le statut de l'exemplaire
+        model.Exemplaire ex = reservation.getExemplaire();
+        ex.setStatut("emprunte");
+        exemplaireRepository.save(ex);
+    }
+
+    public String creerPret(Integer adherentId, String referenceExemplaire, String typePret, String dateEmpruntStr, Integer reservationId) {
+        Optional<Adherent> adherentOpt = adherentRepository.findById(adherentId);
+        if (adherentOpt.isEmpty()) return "Adhérent introuvable";
+        Adherent adherent = adherentOpt.get();
+        if (!adherentService.isInscriptionValide(adherent)) {
+            return "Votre abonnement n'est plus valide. Veuillez le renouveler.";
+        }
+        if (!"actif".equals(adherent.getEtat())) return "Veuillez renouveler votre abonnement";
+
+        if (penaliteRepository.existsByAdherentAndDateFinAfter(adherent, LocalDateTime.now())) {
+                return "Cet adherent est pénalisé jusqu'à la date " +
+                penaliteRepository.findFirstByAdherentAndDateFinAfterOrderByDateFinDesc(adherent, LocalDateTime.now()).getDateFin();
+        }
+
+        Optional<Exemplaire> exemplaireOpt = exemplaireRepository.findByReference(referenceExemplaire);
+        if (exemplaireOpt.isEmpty()) return "Exemplaire introuvable";
+        Exemplaire exemplaire = exemplaireOpt.get();
+        if (!"disponible".equals(exemplaire.getStatut())) return "Cet exemplaire n'est pas empruntable";
+
+        TypeAbonnement abo = adherent.getTypeAbonnement();
+        int duree = abo.getDureePretJour();
+        LocalDateTime dateEmprunt = (dateEmpruntStr != null && !dateEmpruntStr.isEmpty()) ? java.time.LocalDate.parse(dateEmpruntStr).atStartOfDay() : LocalDateTime.now();
+        LocalDateTime retour = dateEmprunt.plusDays(duree);
+        Pret pret = new Pret();
+        pret.setAdherent(adherent);
+        pret.setExemplaire(exemplaire);
+        pret.setDateEmprunt(dateEmprunt);
+        pret.setDateRetourPrevue(retour);
+        pret.setTypePret(typePret);
+        pret.setStatut("en_cours");
+        pretRepository.save(pret);
+        exemplaire.setStatut("emprunte");
+        exemplaireRepository.save(exemplaire);
+        // Historique : création de prêt
+        HistoriquePret hist = new HistoriquePret();
+        hist.setPret(pret);
+        hist.setAction("emprunt");
+        hist.setDateAction(dateEmprunt);
+        hist.setCommentaire("Prêt créé");
+        historiquePretService.save(hist);
+        // Si prêt lié à une réservation, on peut mettre à jour la réservation si besoin
+        // (optionnel)
+        return "Prêt enregistré avec succès. Date de retour : " + retour;
+    }
+}

@@ -1,89 +1,80 @@
-package com.example.library.model;
+package model;
 
 import jakarta.persistence.*;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "penalite")
 public class Penalite {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "membre_id", nullable = false)
-    private Membre membre;
+    @ManyToOne
+    @JoinColumn(name = "id_adherent")
+    private Adherent adherent;
 
-    @Column(name = "date_debut_penalite")
-    private LocalDate dateDebutPenalite;
+    @ManyToOne
+    @JoinColumn(name = "id_pret")
+    private Pret pret;
 
-    @Column(name = "date_fin_penalite")
-    private LocalDate dateFinPenalite;
+    @Column(name = "date_debut", nullable = false)
+    private LocalDateTime dateDebut;
 
-    @Column(columnDefinition = "TEXT")
-    private String motif;
+    @Column(name = "date_fin", nullable = false)
+    private LocalDateTime dateFin;
 
-    // Constructeurs
-    public Penalite() {
-    }
+    @Column(nullable = false)
+    private boolean reglee = false;
 
-    public Penalite(Membre membre, LocalDate dateDebutPenalite, LocalDate dateFinPenalite, String motif) {
-        this.membre = membre;
-        this.dateDebutPenalite = dateDebutPenalite;
-        this.dateFinPenalite = dateFinPenalite;
-        this.motif = motif;
-    }
 
-    // Getters et Setters
+    // Getters et setters...
     public Integer getId() {
-        return id;
-    }
+    return id;
+}
 
-    public void setId(Integer id) {
-        this.id = id;
-    }
+public void setId(Integer id) {
+    this.id = id;
+}
 
-    public Membre getMembre() {
-        return membre;
-    }
+public Adherent getAdherent() {
+    return adherent;
+}
 
-    public void setMembre(Membre membre) {
-        this.membre = membre;
-    }
+public void setAdherent(Adherent adherent) {
+    this.adherent = adherent;
+}
 
-    public LocalDate getDateDebutPenalite() {
-        return dateDebutPenalite;
-    }
+public Pret getPret() {
+    return pret;
+}
 
-    public void setDateDebutPenalite(LocalDate dateDebutPenalite) {
-        this.dateDebutPenalite = dateDebutPenalite;
-    }
+public void setPret(Pret pret) {
+    this.pret = pret;
+}
 
-    public LocalDate getDateFinPenalite() {
-        return dateFinPenalite;
-    }
+public LocalDateTime getDateDebut() {
+    return dateDebut;
+}
 
-    public void setDateFinPenalite(LocalDate dateFinPenalite) {
-        this.dateFinPenalite = dateFinPenalite;
-    }
+public void setDateDebut(LocalDateTime dateDebut) {
+    this.dateDebut = dateDebut;
+}
 
-    public String getMotif() {
-        return motif;
-    }
+public LocalDateTime getDateFin() {
+    return dateFin;
+}
 
-    public void setMotif(String motif) {
-        this.motif = motif;
-    }
+public void setDateFin(LocalDateTime dateFin) {
+    this.dateFin = dateFin;
+}
 
-    @Override
-    public String toString() {
-        return "Penalite{" +
-               "id=" + id +
-               ", membreId=" + (membre != null ? membre.getId() : "null") +
-               ", dateDebutPenalite=" + dateDebutPenalite +
-               ", dateFinPenalite=" + dateFinPenalite +
-               ", motif='" + motif + '\'' +
-               '}';
-    }
+public boolean isReglee() {
+    return reglee;
+}
+
+public void setReglee(boolean reglee) {
+    this.reglee = reglee;
+}
+
 }

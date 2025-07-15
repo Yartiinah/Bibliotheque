@@ -4,31 +4,34 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
+@Table(name = "inscription")
 public class Inscription {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
     @ManyToOne
-    @JoinColumn(name = "membre_id")
-    private Membre membre;
+    @JoinColumn(name = "id_adherent", nullable = false)
+    private Adherent adherent;
 
+    @Column(name = "date_inscription", nullable = false)
     private LocalDateTime dateInscription;
-    private double montantCotisation;
 
-    @Enumerated(EnumType.STRING)
-    private StatutInscription statut;
+    @Column(name = "date_expiration", nullable = false)
+    private LocalDateTime dateExpiration;
 
-    // Getters et Setters
+    @Column(nullable = false)
+    private String statut;
+
+    // Getters et setters
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
-    public Membre getMembre() { return membre; }
-    public void setMembre(Membre membre) { this.membre = membre; }
+    public Adherent getAdherent() { return adherent; }
+    public void setAdherent(Adherent adherent) { this.adherent = adherent; }
     public LocalDateTime getDateInscription() { return dateInscription; }
     public void setDateInscription(LocalDateTime dateInscription) { this.dateInscription = dateInscription; }
-    public double getMontantCotisation() { return montantCotisation; }
-    public void setMontantCotisation(double montantCotisation) { this.montantCotisation = montantCotisation; }
-    public StatutInscription getStatut() { return statut; }
-    public void setStatut(StatutInscription statut) { this.statut = statut; }
+    public LocalDateTime getDateExpiration() { return dateExpiration; }
+    public void setDateExpiration(LocalDateTime dateExpiration) { this.dateExpiration = dateExpiration; }
+    public String getStatut() { return statut; }
+    public void setStatut(String statut) { this.statut = statut; }
 }

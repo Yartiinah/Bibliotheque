@@ -1,86 +1,40 @@
-package com.example.library.model;
+package model;
 
 import jakarta.persistence.*;
-import java.util.Set;
 
 @Entity
 @Table(name = "livre")
 public class Livre {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private int id;
 
-    @Column(length = 150)
+    @Column(nullable = false)
     private String titre;
 
-    @Column(length = 100)
+    @Column(nullable = false)
     private String auteur;
 
-    @ManyToOne(fetch = FetchType.LAZY) // Plusieurs livres peuvent appartenir à une catégorie
-    @JoinColumn(name = "categorie_id", nullable = false) // Colonne de jointure dans la table livre
+    @ManyToOne
+    @JoinColumn(name = "id_categorie")
     private Categorie categorie;
 
-    @OneToMany(mappedBy = "livre", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private Set<Exemplaire> exemplaires;
+    @Column(unique = true)
+    private String isbn;
 
-    // Constructeurs
-    public Livre() {
-    }
+    private String restriction;
 
-    public Livre(String titre, String auteur, Categorie categorie) {
-        this.titre = titre;
-        this.auteur = auteur;
-        this.categorie = categorie;
-    }
-
-    // Getters et Setters
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public String getTitre() {
-        return titre;
-    }
-
-    public void setTitre(String titre) {
-        this.titre = titre;
-    }
-
-    public String getAuteur() {
-        return auteur;
-    }
-
-    public void setAuteur(String auteur) {
-        this.auteur = auteur;
-    }
-
-    public Categorie getCategorie() {
-        return categorie;
-    }
-
-    public void setCategorie(Categorie categorie) {
-        this.categorie = categorie;
-    }
-
-    public Set<Exemplaire> getExemplaires() {
-        return exemplaires;
-    }
-
-    public void setExemplaires(Set<Exemplaire> exemplaires) {
-        this.exemplaires = exemplaires;
-    }
-
-    @Override
-    public String toString() {
-        return "Livre{" +
-               "id=" + id +
-               ", titre='" + titre + '\'' +
-               ", auteur='" + auteur + '\'' +
-               '}';
-    }
+    // Getters et setters
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+    public String getTitre() { return titre; }
+    public void setTitre(String titre) { this.titre = titre; }
+    public String getAuteur() { return auteur; }
+    public void setAuteur(String auteur) { this.auteur = auteur; }
+    public Categorie getCategorie() { return categorie; }
+    public void setCategorie(Categorie categorie) { this.categorie = categorie; }
+    public String getIsbn() { return isbn; }
+    public void setIsbn(String isbn) { this.isbn = isbn; }
+    public String getRestriction() { return restriction; }
+    public void setRestriction(String restriction) { this.restriction = restriction; }
 }
