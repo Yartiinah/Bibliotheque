@@ -72,7 +72,6 @@ public class PretService {
         pretRepository.save(pret);
         exemplaire.setStatut("emprunte");
         exemplaireRepository.save(exemplaire);
-        // Historique : création de prêt
         HistoriquePret hist = new HistoriquePret();
         hist.setPret(pret);
         hist.setAction("emprunt");
@@ -82,7 +81,7 @@ public class PretService {
         return "Prêt enregistré avec succès. Date de retour : " + retour;
     }
 
-    public String prolongerPret(Integer pretId, Integer adherentId) {
+    public String prolongerPret(Integer pretId, Integer adherentId, String nouvelleDateRetourPrevueStr) {
         Pret pret = pretRepository.findById(pretId).orElse(null);
         if (pret == null || pret.getAdherent().getId() != adherentId || !"en_cours".equals(pret.getStatut())) {
             return "Prêt introuvable ou non prolongeable";
@@ -98,45 +97,46 @@ public class PretService {
         if (pret.getNbProlongements() >= abo.getQuotaProlongement()) {
             return "Quota de prolongements atteint";
         }
+
+        // Parse and validate the new return date
+        LocalDateTime nouvelleDateRetourPrevue;
+        try {
+            nouvelleDateRetourPrevue = LocalDate.parse(nouvelleDateRetourPrevueStr).atStartOfDay();
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Format de date invalide. Veuillez utiliser AAAA-MM-JJ.");
+        }
+
+        // Validate that the new return date is after the current return date
+        LocalDateTime ancienneDateRetour = pret.getDateRetourPrevue();
+        if (!nouvelleDateRetourPrevue.isAfter(ancienneDateRetour)) {
+            throw new IllegalArgumentException("La nouvelle date de retour doit être postérieure à la date de retour actuelle (" + ancienneDateRetour.toLocalDate() + ").");
+        }
+
         // Vérification des réservations sur la période de prolongation
-        java.time.LocalDateTime ancienneDateRetour = pret.getDateRetourPrevue();
-        java.time.LocalDateTime nouvelleDateRetour = ancienneDateRetour.plusDays(abo.getNbJourProlongement());
         List<model.Reservation> reservations = reservationRepository.findByExemplaireId(pret.getExemplaire().getId());
         for (model.Reservation r : reservations) {
             if (("en_attente".equals(r.getStatut()) || "acceptee".equals(r.getStatut()))
                 && r.getAdherent().getId() != adherentId
                 && !r.getDateDemande().isBefore(ancienneDateRetour)
-                && !r.getDateDemande().isAfter(nouvelleDateRetour)) {
+                && !r.getDateDemande().isAfter(nouvelleDateRetourPrevue)) {
                 return "Impossible de prolonger : une réservation existe sur la période de prolongation (" + r.getAdherent().getNom() + ", date : " + r.getDateDemande().toLocalDate() + ")";
             }
         }
 
-        // Clôturer l'ancien prêt
-        pret.setStatut("termine");
-        pret.setDateRetourEffective(ancienneDateRetour);
+        // Mettre à jour la date de retour prévue et le nombre de prolongements
+        pret.setDateRetourPrevue(nouvelleDateRetourPrevue);
+        pret.setNbProlongements(pret.getNbProlongements() + 1);
         pretRepository.save(pret);
-
-        // Créer un nouveau prêt pour le prolongement
-        Pret nouveauPret = new Pret();
-        nouveauPret.setAdherent(adherent);
-        nouveauPret.setExemplaire(pret.getExemplaire());
-        nouveauPret.setDateEmprunt(ancienneDateRetour);
-        nouveauPret.setDateRetourPrevue(nouvelleDateRetour);
-        nouveauPret.setTypePret(pret.getTypePret());
-        nouveauPret.setStatut("en_cours");
-        nouveauPret.setNbProlongements(pret.getNbProlongements() + 1);
-        nouveauPret.setPretOrigine(pret); // lien vers le prêt d'origine
-        pretRepository.save(nouveauPret);
 
         // Historique : prolongement
         HistoriquePret hist = new HistoriquePret();
-        hist.setPret(nouveauPret);
+        hist.setPret(pret);
         hist.setAction("prolongement");
-        hist.setDateAction(java.time.LocalDateTime.now());
-        hist.setCommentaire("Prolongement validé (prêt d'origine #" + pret.getId() + ")");
+        hist.setDateAction(LocalDateTime.now());
+        hist.setCommentaire("Prolongement validé à " + nouvelleDateRetourPrevue.toLocalDate());
         historiquePretService.save(hist);
 
-        return "Prolongement effectué avec succès (nouveau prêt créé)";
+        return "Prolongement effectué avec succès jusqu'au " + nouvelleDateRetourPrevue.toLocalDate();
     }
 
     public String retourPret(Integer pretId) {
@@ -149,7 +149,6 @@ public class PretService {
         pret.setStatut("termine");
         pretRepository.save(pret);
         exemplaireRepository.save(exemplaire);
-        // Historique : retour
         HistoriquePret hist = new HistoriquePret();
         hist.setPret(pret);
         hist.setAction("retour");
@@ -175,21 +174,15 @@ public class PretService {
         if (pret == null || !"en_cours".equals(pret.getStatut())) {
             return "Prêt introuvable ou non modifiable";
         }
-        
-        // Parse and validate the new effective return date
         LocalDateTime nouvelleDateRetourEffective;
         try {
             nouvelleDateRetourEffective = LocalDate.parse(nouvelleDateRetourEffectiveStr).atStartOfDay();
         } catch (Exception e) {
             throw new IllegalArgumentException("Format de date invalide. Veuillez utiliser AAAA-MM-JJ.");
         }
-
-        // Validate that the new date is not before dateEmprunt
         if (nouvelleDateRetourEffective.isBefore(pret.getDateEmprunt())) {
             throw new IllegalArgumentException("La date de retour effective doit être après la date d'emprunt.");
         }
-
-        // Update the loan
         Adherent adherent = pret.getAdherent();
         Exemplaire exemplaire = pret.getExemplaire();
         exemplaire.setStatut("disponible");
@@ -197,16 +190,12 @@ public class PretService {
         pret.setStatut("termine");
         pretRepository.save(pret);
         exemplaireRepository.save(exemplaire);
-
-        // Historique : modification de date effective
         HistoriquePret hist = new HistoriquePret();
         hist.setPret(pret);
         hist.setAction("retour_effectif");
         hist.setDateAction(LocalDateTime.now());
         hist.setCommentaire("Date de retour effective enregistrée à " + nouvelleDateRetourEffective);
         historiquePretService.save(hist);
-
-        // Check for penalties if return is late
         if (pret.getDateRetourPrevue() != null && nouvelleDateRetourEffective.isAfter(pret.getDateRetourPrevue())) {
             Penalite penalite = new Penalite();
             penalite.setAdherent(adherent);
@@ -216,7 +205,6 @@ public class PretService {
             penalite.setReglee(false);
             penaliteRepository.save(penalite);
         }
-
         return "Retour effectif enregistré avec succès à " + nouvelleDateRetourEffective.toLocalDate();
     }
 
@@ -240,7 +228,6 @@ public class PretService {
         pret.setStatut("en_cours");
         pret.setTypePret(typePret);
         pretRepository.save(pret);
-        // Met à jour le statut de l'exemplaire
         model.Exemplaire ex = reservation.getExemplaire();
         ex.setStatut("emprunte");
         exemplaireRepository.save(ex);
@@ -258,7 +245,7 @@ public class PretService {
             LocalDateTime dateEmprunt = LocalDate.parse(dateEmpruntStr).atStartOfDay();
             return pretRepository.findByExemplaireReferenceAndDateEmprunt(referenceExemplaire, dateEmprunt);
         } catch (Exception e) {
-            return null; // Invalid date format
+            return null;
         }
     }
 }

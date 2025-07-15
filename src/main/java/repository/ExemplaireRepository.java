@@ -9,4 +9,7 @@ import java.util.Optional;
 public interface ExemplaireRepository extends JpaRepository<Exemplaire, Integer> {
     Optional<Exemplaire> findByReference(String reference);
     List<Exemplaire> findByLivre(Livre livre);
+    // Dans ExemplaireRepository.java
+    List<Exemplaire> findByLivreId(Integer livreId);
+
 }
