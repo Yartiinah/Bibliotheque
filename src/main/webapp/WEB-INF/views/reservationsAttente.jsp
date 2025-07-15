@@ -4,17 +4,7 @@
 <html>
 <head>
     <title>Réservations à valider</title>
-    <style>
-        .page-container { max-width: 1000px; margin: 30px auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 8px #ccc; }
-        h2 { color: #2c3e50; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 10px; border: 1px solid #ddd; text-align: center; }
-        th { background: #34495e; color: #fff; }
-        tr:nth-child(even) { background: #f2f2f2; }
-        tr:hover { background: #eaf6fb; }
-        button, a { background: #27ae60; color: #fff; border: none; padding: 7px 15px; border-radius: 4px; text-decoration: none; transition: background 0.2s; margin: 2px; }
-        button:hover, a:hover { background: #219150; }
-    </style>
+
 </head>
 <body>
 <div class="page-container">
