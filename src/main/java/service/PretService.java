@@ -1,4 +1,3 @@
-
 package service;
 
 import model.Pret;
@@ -83,8 +82,12 @@ public class PretService {
 
     public String prolongerPret(Integer pretId, Integer adherentId, String nouvelleDateRetourPrevueStr) {
         Pret pret = pretRepository.findById(pretId).orElse(null);
-        if (pret == null || pret.getAdherent().getId() != adherentId || !"en_cours".equals(pret.getStatut())) {
+        if (pret == null || !"en_cours".equals(pret.getStatut())) {
             return "Prêt introuvable ou non prolongeable";
+        }
+        // Vérification de l'adhérent uniquement si adherentId est fourni (pour les non-bibliothécaires)
+        if (adherentId != null && pret.getAdherent().getId() != adherentId) {
+            return "Vous ne pouvez prolonger que vos propres prêts";
         }
         Adherent adherent = pret.getAdherent();
         if (!adherentService.isInscriptionValide(adherent)) {
@@ -116,7 +119,7 @@ public class PretService {
         List<model.Reservation> reservations = reservationRepository.findByExemplaireId(pret.getExemplaire().getId());
         for (model.Reservation r : reservations) {
             if (("en_attente".equals(r.getStatut()) || "acceptee".equals(r.getStatut()))
-                && r.getAdherent().getId() != adherentId
+                && r.getAdherent().getId() != adherent.getId()
                 && !r.getDateDemande().isBefore(ancienneDateRetour)
                 && !r.getDateDemande().isAfter(nouvelleDateRetourPrevue)) {
                 return "Impossible de prolonger : une réservation existe sur la période de prolongation (" + r.getAdherent().getNom() + ", date : " + r.getDateDemande().toLocalDate() + ")";

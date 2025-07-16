@@ -1,4 +1,3 @@
-
 package controller;
 
 import model.Pret;
@@ -57,11 +56,21 @@ public class PretController {
 
     @GetMapping("/liste")
     public String listePrets(Model model, HttpSession session) {
-        Object userObj = session.getAttribute("user");
-        if (userObj == null || !"BIBLIOTHECAIRE".equals(((model.Utilisateur)userObj).getRole())) {
+        model.Utilisateur user = (model.Utilisateur) session.getAttribute("user");
+        if (user == null) {
             return "redirect:/login";
         }
-        List<Pret> prets = pretService.pretRepository.findAll();
+        List<Pret> prets;
+        if ("BIBLIOTHECAIRE".equals(user.getRole())) {
+            prets = pretService.pretRepository.findAll();
+            model.addAttribute("isBibliothecaire", true);
+        } else if (user.getAdherent() != null) {
+            Integer adherentId = user.getAdherent().getId();
+            prets = pretService.getPretsByAdherentId(adherentId);
+            model.addAttribute("isBibliothecaire", false);
+        } else {
+            return "redirect:/login";
+        }
         model.addAttribute("prets", prets);
         return "listePrets";
     }
@@ -165,43 +174,44 @@ public class PretController {
         Integer adherentId = user.getAdherent().getId();
         List<Pret> prets = pretService.getPretsByAdherentId(adherentId);
         model.addAttribute("prets", prets);
-        return "mesPrets";
-    }
-
-    @GetMapping("/prolonger")
-    public String showProlongerPretForm(Model model, HttpSession session) {
-        model.Utilisateur user = (model.Utilisateur) session.getAttribute("user");
-        if (user == null || user.getAdherent() == null) {
-            return "redirect:/login";
-        }
-        Integer adherentId = user.getAdherent().getId();
-        List<Pret> prets = pretService.getPretsByAdherentId(adherentId).stream()
-                .filter(p -> "en_cours".equals(p.getStatut()))
-                .toList();
-        model.addAttribute("prets", prets);
-        return "prolongerPret";
+        model.addAttribute("isBibliothecaire", false);
+        return "listePrets";
     }
 
     @PostMapping("/prolonger")
-    public String prolongerPret(@RequestParam("pretId") Integer pretId,
-                               @RequestParam("nouvelleDateRetourPrevue") String nouvelleDateRetourPrevue,
-                               Model model, HttpSession session) {
+    public String prolongerPretDansListe(@RequestParam("pretId") Integer pretId,
+                                        @RequestParam("nouvelleDateRetourPrevue") String nouvelleDateRetourPrevue,
+                                        Model model, HttpSession session) {
         model.Utilisateur user = (model.Utilisateur) session.getAttribute("user");
-        if (user == null || user.getAdherent() == null) {
+        if (user == null) {
             return "redirect:/login";
         }
-        Integer adherentId = user.getAdherent().getId();
         try {
-            String message = pretService.prolongerPret(pretId, adherentId, nouvelleDateRetourPrevue);
+            String message;
+            if ("BIBLIOTHECAIRE".equals(user.getRole())) {
+                message = pretService.prolongerPret(pretId, null, nouvelleDateRetourPrevue);
+                List<Pret> prets = pretService.pretRepository.findAll();
+                model.addAttribute("prets", prets);
+                model.addAttribute("isBibliothecaire", true);
+            } else if (user.getAdherent() != null) {
+                Integer adherentId = user.getAdherent().getId();
+                message = pretService.prolongerPret(pretId, adherentId, nouvelleDateRetourPrevue);
+                List<Pret> prets = pretService.getPretsByAdherentId(adherentId);
+                model.addAttribute("prets", prets);
+                model.addAttribute("isBibliothecaire", false);
+            } else {
+                return "redirect:/login";
+            }
             model.addAttribute("message", message);
         } catch (IllegalArgumentException e) {
             model.addAttribute("error", e.getMessage());
+            List<Pret> prets = "BIBLIOTHECAIRE".equals(user.getRole()) ?
+                    pretService.pretRepository.findAll() :
+                    pretService.getPretsByAdherentId(user.getAdherent().getId());
+            model.addAttribute("prets", prets);
+            model.addAttribute("isBibliothecaire", "BIBLIOTHECAIRE".equals(user.getRole()));
         }
-        List<Pret> prets = pretService.getPretsByAdherentId(adherentId).stream()
-                .filter(p -> "en_cours".equals(p.getStatut()))
-                .toList();
-        model.addAttribute("prets", prets);
-        return "prolongerPret";
+        return "listePrets";
     }
 
     @GetMapping("/ajouter")

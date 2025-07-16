@@ -364,22 +364,20 @@
                                     <c:out value="${pret.statut}" />
                                 </span>
                             </td>
-                            <td>
+                             <td>
                                 <c:out value="${pret.nbProlongements}" />
-                                <c:if test="${pret.statut == 'en_cours' && sessionScope.user != null && sessionScope.user.role == 'BIBLIOTHECAIRE'}">
-                                    <button class="btn-extend" data-pret-id="${pret.id}">Prolonger</button>
-                                    <div id="extend-form-${pret.id}" class="extend-form">
-                                        <form method="post" action="${pageContext.request.contextPath}/prets/prolonger">
-                                            <input type="hidden" name="pretId" value="${pret.id}">
-                                            <input type="hidden" name="redirectTo" value="listePrets">
-                                            <div class="form-group">
-                                                <label for="nouvelleDateRetourPrevue-${pret.id}">Nouvelle date de retour prévue :</label>
-                                                <input type="date" id="nouvelleDateRetourPrevue-${pret.id}" name="nouvelleDateRetourPrevue" class="form-date" required>
-                                            </div>
-                                            <button type="submit" class="btn-submit">Confirmer</button>
-                                        </form>
-                                    </div>
-                                </c:if>
+                                <button class="btn-extend" data-pret-id="${pret.id}">Prolonger</button>
+                                <div id="extend-form-${pret.id}" class="extend-form">
+                                    <form method="post" action="${pageContext.request.contextPath}/prets/prolonger">
+                                        <input type="hidden" name="pretId" value="${pret.id}">
+                                        <input type="hidden" name="redirectTo" value="prolongerPret">
+                                        <div class="form-group">
+                                            <label for="nouvelleDateRetourPrevue-${pret.id}">Nouvelle date de retour prévue :</label>
+                                            <input type="date" id="nouvelleDateRetourPrevue-${pret.id}" name="nouvelleDateRetourPrevue" class="form-date" required>
+                                        </div>
+                                        <button type="submit" class="btn-submit">Confirmer</button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     </c:forEach>
