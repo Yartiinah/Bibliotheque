@@ -123,9 +123,17 @@ CREATE TABLE penalite (
 -- Table des jours fériés
 CREATE TABLE jourferie (
     id SERIAL PRIMARY KEY,
-    date_ferie TIMESTAMP UNIQUE NOT NULL,
+    date_ferie DATE UNIQUE NOT NULL,
     description VARCHAR(100)
 );
+
+INSERT INTO jourferie (date_ferie, description) VALUES
+('2025-06-26', 'Jour férié exemple 26 juin'),
+('2025-01-01', 'Nouvel An'),
+('2025-05-01', 'Fête du Travail'),
+('2025-07-14', 'Fête Nationale'),
+('2025-12-25', 'Noël');
+
 
 -- Table des utilisateurs
 CREATE TABLE utilisateur (
@@ -134,10 +142,10 @@ CREATE TABLE utilisateur (
     password VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL CHECK (role IN ('ADHERENT', 'BIBLIOTHECAIRE')),
     adherent_id INT REFERENCES adherent(id)
-);p
+);
 
 -- Exemples d'insertion
-insert into adherent (nom,prenom,email,id_type_abonnement,adresse,etat,date_naissance) values ('nyeja','nyeja','nyeja@gmail.com',1,'itaosy','actif','2000-01-01');
+insert into adherent (nom,prenom,email,id_type_abonnement,adresse,etat,date_naissance) values ('Tina','Tina','tina@gmail.com',1,'itaosy','actif','2000-01-01');
 INSERT into utilisateur (username,password,role,adherent_id) values ('test','test','ADHERENT',1);
 INSERT into utilisateur (username,password,role,adherent_id) values ('biblio','biblio','BIBLIOTHECAIRE',NULL);
 

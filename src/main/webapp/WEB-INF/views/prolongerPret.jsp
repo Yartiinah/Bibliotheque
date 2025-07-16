@@ -1,152 +1,236 @@
+
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
-<!DOCTYPE html>
-<html lang="fr">
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<jsp:include page="/WEB-INF/views/navbar.jsp" />
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prolonger un prêt</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --primary-color: #5D4037;
+            --secondary-color: #8D6E63;
+            --accent-color: #D7CCC8;
+            --text-color: #3E2723;
+            --light-text: #EFEBE9;
+            --success-color: #2E7D32;
+            --warning-color: #FF8F00;
+            --error-color: #C62828;
+            --info-color: #0277BD;
+            --font-main: 'Open Sans', sans-serif;
+            --font-heading: 'Merriweather', serif;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
-            color: #333;
+            font-family: var(--font-main);
+            color: var(--text-color);
+            background-color: #FAF9F7;
             line-height: 1.6;
+            display: flex;
+            min-height: 100vh;
         }
 
         .main-content {
-            padding: 2rem;
-            max-width: 600px;
+            margin-left: 280px;
+            padding: 30px;
+            width: calc(100% - 280px);
+        }
+
+        .page-container {
+            max-width: 800px;
             margin: 0 auto;
+            padding: 30px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
-        .page-header {
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            border-radius: 15px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e3e6f0;
-        }
-
-        .page-title {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #2196F3;
-            margin-bottom: 0.5rem;
+        .page-container h2 {
+            font-family: var(--font-heading);
+            color: var(--primary-color);
+            margin-bottom: 20px;
             text-align: center;
         }
 
-        .form-container {
-            background: white;
-            border-radius: 15px;
-            padding: 2rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e3e6f0;
-        }
-
         .form-group {
-            margin-bottom: 1.5rem;
+            margin-bottom: 20px;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 0.5rem;
+            margin-bottom: 8px;
             font-weight: 600;
-            color: #495057;
+            color: var(--primary-color);
         }
 
-        .form-select {
+        .form-control, .form-select, .form-date {
             width: 100%;
-            padding: 0.8rem 1rem;
+            padding: 10px 15px;
             border: 1px solid #ddd;
-            border-radius: 8px;
+            border-radius: 4px;
+            font-family: var(--font-main);
             font-size: 1rem;
-            background-color: white;
-            transition: all 0.3s;
+            transition: border 0.3s;
         }
 
-        .form-select:focus {
-            border-color: #2196F3;
-            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.2);
+        .form-control:focus, .form-select:focus, .form-date:focus {
+            border-color: var(--secondary-color);
             outline: none;
         }
 
-        .btn-extend {
-            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+        .btn-submit, .btn-extend {
+            background-color: var(--info-color);
             color: white;
             border: none;
-            padding: 1rem 2rem;
-            border-radius: 8px;
-            font-weight: 600;
+            padding: 8px 15px;
+            border-radius: 4px;
             cursor: pointer;
-            transition: all 0.3s ease;
             font-size: 1rem;
-            width: 100%;
-            margin-top: 1rem;
+            transition: all 0.3s;
         }
 
-        .btn-extend:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(33, 150, 243, 0.3);
-            background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
+        .btn-submit:hover, .btn-extend:hover {
+            background-color: #01579B;
         }
 
-        .message {
-            text-align: center;
-            padding: 1rem;
-            margin-top: 1.5rem;
-            border-radius: 8px;
-            background-color: #e3f2fd;
-            color: #1976D2;
+        .success-message {
+            background-color: #E8F5E9;
+            color: var(--success-color);
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
             font-weight: 500;
+        }
+
+        .error-message {
+            background-color: #FFEBEE;
+            color: var(--error-color);
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background-color: var(--accent-color);
+            color: var(--text-color);
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+
+        .extend-form {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        .extend-form.active {
+            display: block;
         }
 
         @media (max-width: 768px) {
             .main-content {
-                padding: 1rem;
+                margin-left: 0;
+                width: 100%;
             }
-            
-            .page-title {
-                font-size: 1.8rem;
+
+            table {
+                display: block;
+                overflow-x: auto;
             }
         }
     </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            function showExtendForm(pretId) {
+                document.querySelectorAll('.extend-form').forEach(form => form.classList.remove('active'));
+                const form = document.getElementById('extend-form-' + pretId);
+                if (form) {
+                    form.classList.add('active');
+                    const inputDate = form.querySelector('.form-date');
+                    const today = new Date().toISOString().split('T')[0];
+                    inputDate.setAttribute('min', today);
+                }
+            }
+
+            document.querySelectorAll('.btn-extend').forEach(button => {
+                button.addEventListener('click', function() {
+                    const pretId = this.getAttribute('data-pret-id');
+                    showExtendForm(pretId);
+                });
+            });
+        });
+    </script>
 </head>
 <body>
-    <jsp:include page="/WEB-INF/views/navbar.jsp" />
-    
-    <div class="main-content">
-        <div class="page-header">
-            <h1 class="page-title">Prolonger un prêt</h1>
-        </div>
-        
-        <div class="form-container">
-            <form method="post" action="${pageContext.request.contextPath}/prets/prolonger">
-                <div class="form-group">
-                    <label for="pretId">Choisir un prêt à prolonger :</label>
-                    <select id="pretId" name="pretId" required class="form-select">
-                        <c:forEach var="pret" items="${prets}">
-                            <option value="${pret.id}">
-                                Livre : ${pret.exemplaire.livre.titre} | Exemplaire : ${pret.exemplaire.reference} | Retour prévu : ${pret.dateRetourPrevue}
-                            </option>
-                        </c:forEach>
-                    </select>
-                </div>
-                
-                <button type="submit" class="btn-extend">Prolonger le prêt</button>
-            </form>
-            
-            <c:if test="${not empty message}">
-                <div class="message">${message}</div>
-            </c:if>
-        </div>
+<div class="main-content">
+    <div class="page-container">
+        <h2>Prolonger un prêt</h2>
+        <c:if test="${not empty message}">
+            <div class="success-message"><c:out value="${message}" /></div>
+        </c:if>
+        <c:if test="${not empty error}">
+            <div class="error-message"><c:out value="${error}" /></div>
+        </c:if>
+        <c:if test="${empty prets}">
+            <div class="empty-state">
+                <h3>Aucun prêt en cours</h3>
+                <p>Vous n'avez aucun prêt en cours à prolonger.</p>
+            </div>
+        </c:if>
+        <c:if test="${not empty prets}">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Livre</th>
+                        <th>Exemplaire</th>
+                        <th>Date de retour prévue</th>
+                        <th>Prolongement</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <c:forEach var="pret" items="${prets}">
+                        <tr>
+                            <td><c:out value="${pret.exemplaire.livre.titre}" /></td>
+                            <td><c:out value="${pret.exemplaire.reference}" /></td>
+                            <td><c:out value="${pret.dateRetourPrevue}" /></td>
+                            <td>
+                                <c:out value="${pret.nbProlongements}" />
+                                <button class="btn-extend" data-pret-id="${pret.id}">Prolonger</button>
+                                <div id="extend-form-${pret.id}" class="extend-form">
+                                    <form method="post" action="${pageContext.request.contextPath}/prets/prolonger">
+                                        <input type="hidden" name="pretId" value="${pret.id}">
+                                        <input type="hidden" name="redirectTo" value="prolongerPret">
+                                        <div class="form-group">
+                                            <label for="nouvelleDateRetourPrevue-${pret.id}">Nouvelle date de retour prévue :</label>
+                                            <input type="date" id="nouvelleDateRetourPrevue-${pret.id}" name="nouvelleDateRetourPrevue" class="form-date" required>
+                                        </div>
+                                        <button type="submit" class="btn-submit">Confirmer</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    </c:forEach>
+                </tbody>
+            </table>
+        </c:if>
     </div>
+</div>
 </body>
 </html>
